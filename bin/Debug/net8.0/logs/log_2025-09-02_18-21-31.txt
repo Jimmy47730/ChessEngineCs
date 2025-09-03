@@ -1,8 +1,0 @@
-2025-09-02 18:21:31 [INFO] Starting Chess Engine...
-2025-09-02 18:21:46 [INFO] Command received: uci
-2025-09-02 18:21:46 [INFO] Response sent: uciok
-2025-09-02 18:21:49 [INFO] Command received: quit
-2025-09-02 18:21:49 [ERROR] Unhandled exception: System.NotImplementedException: The method or operation is not implemented.
-   at Engine.Bot.Quit() in C:\Users\jimmy\Documents\Programming\C#\ChessEngine\Engine\Bot.cs:line 23
-   at Chess.UCI.ReceiveCommand(String message) in C:\Users\jimmy\Documents\Programming\C#\ChessEngine\Interface\UCI.cs:line 43
-   at Chess.Program.Main(String[] args) in C:\Users\jimmy\Documents\Programming\C#\ChessEngine\Interface\Program.cs:line 28

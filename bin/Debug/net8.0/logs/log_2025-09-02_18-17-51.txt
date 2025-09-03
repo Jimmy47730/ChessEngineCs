@@ -1,3 +1,0 @@
-2025-09-02 18:17:51 [INFO] Starting Chess Engine...
-2025-09-02 18:18:09 [INFO] Command received: uci
-2025-09-02 18:18:09 [INFO] Response sent: uciok
