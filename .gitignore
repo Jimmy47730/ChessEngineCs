@@ -1,0 +1,6 @@
+/obj
+/bin
+/.vs
+/logs
+ChessEngine.Tests/bin
+ChessEngine.Tests/obj
