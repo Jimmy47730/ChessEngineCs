@@ -1,0 +1,10 @@
+2025-09-02 22:32:23 [INFO] Starting Chess Engine...
+2025-09-02 22:32:24 [INFO] Command received: position startpos
+2025-09-02 22:32:26 [INFO] Command received: go wtime 1000 btime 1000
+2025-09-02 22:32:26 [DEBUG] Extracted value for 'wtime': 1000
+2025-09-02 22:32:26 [DEBUG] Extracted value for 'btime': 1000
+2025-09-02 22:32:26 [ERROR] Exception occurred: System.NotImplementedException: The method or operation is not implemented.
+   at Engine.Bot.DefineThinkingTime(Int32 whiteTime, Int32 blackTime, Int32 whiteInc, Int32 blackInc) in C:\Users\jimmy\Documents\Programming\C#\ChessEngine\Engine\Bot.cs:line 52
+   at Chess.UCI.ProcessGoCommand(String message) in C:\Users\jimmy\Documents\Programming\C#\ChessEngine\Interface\UCI.cs:line 94
+   at Chess.UCI.ReceiveCommand(String message) in C:\Users\jimmy\Documents\Programming\C#\ChessEngine\Interface\UCI.cs:line 38
+   at Chess.Program.Main(String[] args) in C:\Users\jimmy\Documents\Programming\C#\ChessEngine\Interface\Program.cs:line 29
