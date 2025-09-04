@@ -13,13 +13,12 @@ public static class CheckRestriction
         SideColor opponent = player == SideColor.White ? SideColor.Black : SideColor.White;
         BitBoard sliders = GetEnemySliders(board, opponent);
 
-        if ((sliders & kingBitboard) == BitBoard.Empty)
-        {
-            return BitBoard.Empty;
-        }
-
         Magics magics = Magics.Instance();
-        
+        BitBoard kingRays = magics.GetRay(kingSquare);
+
+        if (sliders | kingRays == BitBoard.Empty)
+            return BitBoard.Empty;
+
 
 
         return pinRays;
@@ -36,4 +35,31 @@ public static class CheckRestriction
             return board.BlackBishops | board.BlackRooks | board.BlackQueens;
         }
     }
+
+    private static BitBoard GetPossiblePinRays(BitBoard sliders, int kingSquare)
+    {
+        BitBoard pinRays = BitBoard.Empty;
+
+        foreach (int sliderIndex in sliders)
+        {
+            // Calculate step direction
+            int kingRank = kingSquare / 8, kingFile = kingSquare % 8;
+            int sliderRank = sliderIndex / 8, sliderFile = sliderIndex % 8;
+            int deltaRank = Math.Sign(sliderRank - kingRank);
+            int deltaFile = Math.Sign(sliderFile - kingFile);
+
+            // Step from king towards slider
+            int rank = kingRank + deltaRank, file = kingFile + deltaFile;
+            BitBoard ray = BitBoard.Empty;
+            while (rank != sliderRank || file != sliderFile)
+            {
+                ray |= BitBoard.FromSquare(rank * 8 + file);
+                rank += deltaRank;
+                file += deltaFile;
+            }
+            pinRays |= ray;
+        }
+        return pinRays;
+    }
+
 }

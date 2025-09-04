@@ -212,14 +212,7 @@ namespace Engine.MoveGeneration
             return kingPrecomputedAttacks[square];
         }
 
-        // Simple rays for pins and other stuff 
-        public ulong GetRay(int fromSquare, int toSquare)
-        {
-            if (fromSquare < 0 || fromSquare >= 64 || toSquare < 0 || toSquare >= 64)
-                return 0UL;
-
-            return precomputedRays[fromSquare] & precomputedRays[toSquare];
-        }
+        // Simple rays for pins and other stuff (not occupancy dependent)
         public ulong GetRay(int square)
         {
             return precomputedRays[square];
