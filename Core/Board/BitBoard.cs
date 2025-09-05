@@ -83,23 +83,23 @@ namespace Core.Board
             return new BitBoard(bits >> n);
         }
 
-            // Returns a BitBoard with all bits set in the rank of the given square
-            public static BitBoard RankBitBoard(int square)
-            {
-                ValidateSquare(square);
-                int rank = square / 8;
-                ulong mask = 0xFFUL << (8 * rank);
-                return new BitBoard(mask);
-            }
+        // Returns a BitBoard with all bits set in the rank of the given square
+        public static BitBoard RankBitBoard(int square)
+        {
+            ValidateSquare(square);
+            int rank = square / 8;
+            ulong mask = 0xFFUL << (8 * rank);
+            return new BitBoard(mask);
+        }
 
-            // Returns a BitBoard with all bits set in the file of the given square
-            public static BitBoard FileBitBoard(int square)
-            {
-                ValidateSquare(square);
-                int file = square % 8;
-                ulong mask = 0x0101010101010101UL << file;
-                return new BitBoard(mask);
-            }
+        // Returns a BitBoard with all bits set in the file of the given square
+        public static BitBoard FileBitBoard(int square)
+        {
+            ValidateSquare(square);
+            int file = square % 8;
+            ulong mask = 0x0101010101010101UL << file;
+            return new BitBoard(mask);
+        }
 
         public static int PopLSB(ref BitBoard bitboard)
         {

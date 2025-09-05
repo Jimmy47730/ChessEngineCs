@@ -213,7 +213,7 @@ namespace Engine.MoveGeneration
         }
 
         // Simple rays for pins and other stuff (not occupancy dependent)
-        public ulong GetRay(int square)
+        public ulong GetRays(int square)
         {
             return precomputedRays[square];
         }

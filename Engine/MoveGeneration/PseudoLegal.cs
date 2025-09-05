@@ -79,23 +79,25 @@ namespace Engine.MoveGeneration
             List<Move> moves = [];
             int[] captureOffsets = isWhite ? [7, 9] : [-9, -7];
 
-            // Double push
-            int offset = isWhite ? 16 : -16;
-            int singleOffset = isWhite ? 8 : -8;
             BitBoard availablePawns = bitboard & (isWhite ? BitBoard.RANK_2 : BitBoard.RANK_7);
-            while (availablePawns != 0)
-            {
-                int startSquare = BitBoard.PopLSB(ref availablePawns);
-                int targetSquare = startSquare + offset;
-                int pathSquare = startSquare + singleOffset;
-                BitBoard pathBitboard = 1UL << targetSquare | (1UL << pathSquare);
-                if ((boardState.AllPieces & pathBitboard) == 0) // Check if the path is clear
-                {
-                    moves.Add(new Move(startSquare, targetSquare, false, PieceType.Pawn));
-                }
-            }
 
-            // A method to add moves to the list considering promotion
+            BitBoard king = isWhite ? boardState.WhiteKing : boardState.BlackKing;
+            int kingSquare = king.LsbIndex();
+            List<BitBoard> pinRays = CheckRestriction.GetPinRays(boardState, kingSquare);
+            BitBoard fullyPinnedPawns = CheckRestriction.GetHorizontallyStuck(bitboard, pinRays);
+            BitBoard pushPinnedPawns = CheckRestriction.GetDiagonallyStuck(bitboard, pinRays);
+            BitBoard capturePinnedPawns = CheckRestriction.GetVerticallyStuck(bitboard, pinRays);
+
+            bitboard &= ~fullyPinnedPawns;
+            PawnPush(ref moves, bitboard & ~pushPinnedPawns, availablePawns & ~pushPinnedPawns, isWhite);
+
+            // Captures and en passant
+            availablePawns = bitboard & ~capturePinnedPawns;
+            PawnCapture(ref moves, captureOffsets, availablePawns);
+
+            return moves;
+
+            // A local function to add moves to the list considering promotion
             void AddMoves(ref List<Move> moves, int startSquare, int targetSquare, bool isCapture, char checkStatus = '\0')
             {
                 bool promotionCondition = isWhite ? ((1UL << targetSquare & BitBoard.RANK_8) != 0) : ((1UL << targetSquare & BitBoard.RANK_1) != 0);
@@ -112,43 +114,63 @@ namespace Engine.MoveGeneration
                 }
             }
 
-            // Single push
-            offset = isWhite ? 8 : -8;
-            availablePawns = bitboard;
-            while (availablePawns != 0)
+            // A local function to handle pawn pushes (single and double)
+            void PawnPush(ref List<Move> moves, BitBoard bitboard, BitBoard availablePawns, bool isWhite)
             {
-                int startSquare = BitBoard.PopLSB(ref availablePawns);
-                int targetSquare = startSquare + offset;
-                if ((boardState.AllPieces & (1UL << targetSquare)) == 0) // Check if the target square is empty
-                {
-                    AddMoves(ref moves, startSquare, targetSquare, false);
-                }
-            }
 
-            // Captures and en passant
-            availablePawns = bitboard;
-            while (availablePawns != 0)
-            {
-                int startSquare = BitBoard.PopLSB(ref availablePawns);
-                foreach (int captureOffset in captureOffsets)
+                // Double push
+                int offset = isWhite ? 16 : -16;
+                int singleOffset = isWhite ? 8 : -8;
+                while (availablePawns != 0)
                 {
-                    int targetSquare = startSquare + captureOffset;
-                    int startFile = startSquare % 8;
-                    int targetFile = targetSquare % 8;
-                    if (Math.Abs(targetFile - startFile) != 1) continue; // Ensure the capture does not wrap around the board
-
-                    if ((boardState.EnemyPieces & (1UL << targetSquare)) != 0) // Check if the target square has an enemy piece
+                    int startSquare = BitBoard.PopLSB(ref availablePawns);
+                    int targetSquare = startSquare + offset;
+                    int pathSquare = startSquare + singleOffset;
+                    BitBoard pathBitboard = 1UL << targetSquare | (1UL << pathSquare);
+                    if ((boardState.AllPieces & pathBitboard) == 0) // Check if the path is clear
                     {
-                        AddMoves(ref moves, startSquare, targetSquare, true);
+                        moves.Add(new Move(startSquare, targetSquare, false, PieceType.Pawn));
                     }
-                    else if (boardState.EnPassantSquare == targetSquare)
+                }
+
+                // Single push
+                offset = isWhite ? 8 : -8;
+                availablePawns = bitboard;
+                while (availablePawns != 0)
+                {
+                    int startSquare = BitBoard.PopLSB(ref availablePawns);
+                    int targetSquare = startSquare + offset;
+                    if ((boardState.AllPieces & (1UL << targetSquare)) == 0) // Check if the target square is empty
                     {
-                        moves.Add(new Move(startSquare, targetSquare, false, PieceType.Pawn, PromotionType.None, MoveType.EnPassant));
+                        AddMoves(ref moves, startSquare, targetSquare, false);
                     }
                 }
             }
 
-            return moves;
+            // A local function to handle pawn captures and en passant
+            void PawnCapture(ref List<Move> moves, int[] captureOffsets, BitBoard availablePawns)
+            {
+                while (availablePawns != 0)
+                {
+                    int startSquare = BitBoard.PopLSB(ref availablePawns);
+                    foreach (int captureOffset in captureOffsets)
+                    {
+                        int targetSquare = startSquare + captureOffset;
+                        int startFile = startSquare % 8;
+                        int targetFile = targetSquare % 8;
+                        if (Math.Abs(targetFile - startFile) != 1) continue; // Ensure the capture does not wrap around the board
+
+                        if ((boardState.EnemyPieces & (1UL << targetSquare)) != 0) // Check if the target square has an enemy piece
+                        {
+                            AddMoves(ref moves, startSquare, targetSquare, true);
+                        }
+                        else if (boardState.EnPassantSquare == targetSquare)
+                        {
+                            moves.Add(new Move(startSquare, targetSquare, false, PieceType.Pawn, PromotionType.None, MoveType.EnPassant));
+                        }
+                    }
+                }
+            }
         }
 
         List<Move> GenerateKnightMoves(BitBoard bitboard)
