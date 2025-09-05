@@ -69,6 +69,12 @@ public class Bot
         }
         Random rng = new();
         Move bestMove = legalMoves[rng.Next(legalMoves.Count)];
+
+        Logger.Debug("All legal moves: ");
+        foreach (var move in legalMoves)
+        {
+            Logger.Debug($"{move} ({move.ToUci()})");
+        }
         OnSearchComplete(bestMove);
         IsThinking = false;
     }
