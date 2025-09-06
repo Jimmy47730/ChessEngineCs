@@ -177,6 +177,21 @@ namespace Core.Board
         public override int GetHashCode() => bits.GetHashCode();
 
 
-        public override string ToString() => bits.ToString("X16");
+        public override string ToString()
+        {
+            char[] board = new char[64];
+            for (int i = 0; i < 64; i++)
+                board[i] = ((bits & (1UL << i)) != 0) ? 'X' : '.';
+
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine();
+            for (int rank = 7; rank >= 0; rank--)
+            {
+                for (int file = 0; file < 8; file++)
+                    sb.Append(board[rank * 8 + file]);
+                sb.AppendLine();
+            }
+            return sb.ToString();
+        }
     }
 }

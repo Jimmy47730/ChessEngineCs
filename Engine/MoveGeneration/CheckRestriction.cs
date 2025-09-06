@@ -10,33 +10,40 @@ public static class CheckRestriction
         BitBoard kingBitboard = BitBoard.FromSquare(kingSquare);
         SideColor player = board.GetPieceAtSquare(kingSquare) == 'K' ? SideColor.White : SideColor.Black;
         SideColor opponent = player == SideColor.White ? SideColor.Black : SideColor.White;
-        BitBoard sliders = GetEnemySliders(board, opponent);
+        BitBoard diagonalSliders = GetEnemySliders(board, opponent, true);
+        BitBoard straightSliders = GetEnemySliders(board, opponent, false);
 
         Magics magics = Magics.Instance();
         BitBoard kingRays = magics.GetRays(kingSquare);
 
-        sliders &= kingRays;
-        if (sliders == 0)
+        diagonalSliders &= kingRays;
+        if (diagonalSliders == 0)
             return [];
 
-        List<BitBoard> pinRays = GetPossiblePinRays(sliders, kingSquare);
+        List<BitBoard> pinRays = GetPossiblePinRays(diagonalSliders, kingSquare, true);
+
+        straightSliders &= kingRays;
+        if (straightSliders == 0)
+            return pinRays;
+
+        pinRays.AddRange(GetPossiblePinRays(straightSliders, kingSquare, false));
 
         return pinRays;
     }
 
-    private static BitBoard GetEnemySliders(BoardState board, SideColor enemyColor)
+    private static BitBoard GetEnemySliders(BoardState board, SideColor enemyColor, bool isDiagonal)
     {
         if (enemyColor == SideColor.White)
         {
-            return board.WhiteBishops | board.WhiteRooks | board.WhiteQueens;
+            return board.WhiteQueens | (isDiagonal ? board.WhiteBishops : board.WhiteRooks);
         }
         else
         {
-            return board.BlackBishops | board.BlackRooks | board.BlackQueens;
+            return board.BlackQueens | (isDiagonal ? board.BlackBishops : board.BlackRooks);
         }
     }
 
-    private static List<BitBoard> GetPossiblePinRays(BitBoard sliders, int kingSquare)
+    private static List<BitBoard> GetPossiblePinRays(BitBoard sliders, int kingSquare, bool isDiagonal)
     {
         List<BitBoard> pinRays = [];
 
@@ -44,47 +51,41 @@ public static class CheckRestriction
         {
             int sliderIndex = BitBoard.PopLSB(ref sliders);
 
-            // Calculate step direction
             int kingRank = kingSquare / 8, kingFile = kingSquare % 8;
             int sliderRank = sliderIndex / 8, sliderFile = sliderIndex % 8;
             int deltaRank = Math.Sign(sliderRank - kingRank);
             int deltaFile = Math.Sign(sliderFile - kingFile);
 
-            // Step from king towards slider
+            // Only generate rays if direction matches isDiagonal
+            bool isSliderDiagonal = Math.Abs(deltaRank) == 1 && Math.Abs(deltaFile) == 1;
+            bool isSliderStraight = (deltaRank == 0 && deltaFile != 0) || (deltaFile == 0 && deltaRank != 0);
+
+            if ((isDiagonal && !isSliderDiagonal) || (!isDiagonal && !isSliderStraight))
+            continue;
+
             int rank = kingRank + deltaRank, file = kingFile + deltaFile;
             BitBoard ray = BitBoard.Empty;
             while (rank != sliderRank || file != sliderFile)
             {
-                ray |= BitBoard.FromSquare(rank * 8 + file);
-                rank += deltaRank;
-                file += deltaFile;
+            ray |= BitBoard.FromSquare(rank * 8 + file);
+            rank += deltaRank;
+            file += deltaFile;
             }
             pinRays.Add(ray);
         }
         return pinRays;
     }
 
-    // Pass BitBoard.Full for piecesToCheck to check all pieces of the player
-    public static BitBoard GetRestrictionRays(BoardState board, int kingSquare, bool isWhite, BitBoard piecesToCheck)
+    public static BitBoard GetRestrictedPieces(BitBoard pieces, List<BitBoard> pinRays)
     {
-        List<BitBoard> pinRays = GetPinRays(board, kingSquare);
-        BitBoard restrictionRays = BitBoard.Empty;
-        BitBoard friendlyPieces = isWhite ? board.WhitePieces : board.BlackPieces;
-
+        BitBoard restrictedPieces = BitBoard.Empty;
         foreach (var ray in pinRays)
         {
-            if ((ray & piecesToCheck) == 0)
-                continue;
-
-            BitBoard piecesOnRay = ray & friendlyPieces;
-            if (piecesOnRay.PopCount() != 1)
-                continue;
-
-            restrictionRays |= ray;
+            restrictedPieces |= ray & pieces;
         }
-        return restrictionRays;
+        return restrictedPieces;
     }
-    
+
     public static BitBoard GetDiagonallyStuck(BitBoard pieces, List<BitBoard> pinRays)
     {
         BitBoard stuckPieces = BitBoard.Empty;
@@ -92,6 +93,7 @@ public static class CheckRestriction
         {
             int firstSquare = ray.LsbIndex();
             if (firstSquare == -1) continue;
+
             if ((BitBoard.RankBitBoard(firstSquare) & ray).PopCount() > 1 ||
                 (BitBoard.FileBitBoard(firstSquare) & ray).PopCount() > 1)
             {
@@ -114,6 +116,7 @@ public static class CheckRestriction
         {
             int firstSquare = ray.LsbIndex();
             if (firstSquare == -1) continue;
+
             // Check if the ray is vertical (file)
             if ((BitBoard.FileBitBoard(firstSquare) & ray).PopCount() <= 1)
                 continue; // Not a vertical ray
@@ -134,6 +137,7 @@ public static class CheckRestriction
         {
             int firstSquare = ray.LsbIndex();
             if (firstSquare == -1) continue;
+
             // Check if the ray is horizontal (rank)
             if ((BitBoard.RankBitBoard(firstSquare) & ray).PopCount() <= 1)
                 continue; // Not a horizontal ray

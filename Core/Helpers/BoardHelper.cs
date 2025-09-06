@@ -72,4 +72,26 @@ public static class BoardHelper
             _ => throw new ArgumentOutOfRangeException(nameof(pieceName), $"Invalid piece name {pieceName}")
         };
     }
+
+    public static bool AreDiagonallyAligned(int square1, int square2)
+    {
+        int rank1 = square1 / 8, file1 = square1 % 8;
+        int rank2 = square2 / 8, file2 = square2 % 8;
+
+        return Math.Abs(rank1 - rank2) == Math.Abs(file1 - file2);
+    }
+    public static bool AreHorizontallyAligned(int square1, int square2)
+    {
+        int rank1 = square1 / 8;
+        int rank2 = square2 / 8;
+
+        return rank1 == rank2;
+    }
+    public static bool AreVerticallyAligned(int square1, int square2)
+    {
+        int file1 = square1 % 8;
+        int file2 = square2 % 8;
+
+        return file1 == file2;
+    }
 }

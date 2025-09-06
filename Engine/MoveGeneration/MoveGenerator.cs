@@ -1,30 +1,32 @@
 using Core.Helpers;
 using Core.Board;
+using Chess;
 
 namespace Engine.MoveGeneration
 {
-    public class PseudoLegal
+    public class MoveGenerator
     {
-        private static PseudoLegal instance = new();
+        private static MoveGenerator instance = new();
         private static readonly object lockObj = new();
         private readonly Magics magics;
         private BoardState boardState;
+        private List<BitBoard> pinRays = [];
         private SideColor CurrentColor => boardState.SideToMove;
 
         // Constructor and Singleton Instance
-        public static PseudoLegal Instance()
+        public static MoveGenerator Instance()
         {
             if (instance == null)
             {
                 lock (lockObj)
                 {
-                    instance ??= new PseudoLegal();
+                    instance ??= new MoveGenerator();
                 }
             }
             return instance;
         }
 
-        private PseudoLegal()
+        private MoveGenerator()
         {
             magics = Magics.Instance();
         }
@@ -34,16 +36,27 @@ namespace Engine.MoveGeneration
         public List<Move> GenerateMoves(BoardState boardState)
         {
             this.boardState = boardState;
+
+            int kingSquare = (CurrentColor == SideColor.White ? boardState.WhiteKing : boardState.BlackKing).LsbIndex();
+            this.pinRays = CheckRestriction.GetPinRays(boardState, kingSquare);
+
+            BitBoard allRays = BitBoard.Empty;
+            foreach (var ray in pinRays)
+            {
+                allRays |= ray;
+            }
+            Logger.Debug($"Pin rays for {CurrentColor}: {allRays}");
+
             List<Move> moves = [];
 
             PieceName kingPiece = CurrentColor == SideColor.White ? PieceName.WhiteKing : PieceName.BlackKing;
             BitBoard kingBitboard = boardState.GetBitboard(kingPiece);
-            moves.AddRange(GenerateMovesForPiece(kingPiece, kingBitboard));
+            moves.AddRange(GenerateKingMoves(kingBitboard));
 
             int startIndex = CurrentColor == SideColor.White ? 0 : 6;
             int endIndex = startIndex + 5; // Exclude the king (already added)
 
-            for (int i = startIndex; i < endIndex; i++) // Generate moves for all other pieces (Only the current color's pieces)
+            for (int i = startIndex; i <= endIndex; i++) // Generate moves for all other pieces (Only the current color's pieces)
             {
                 PieceName piece = (PieceName)i;
                 BitBoard pieceBitboard = boardState.GetBitboard(piece);
@@ -81,9 +94,6 @@ namespace Engine.MoveGeneration
 
             BitBoard availablePawns = bitboard & (isWhite ? BitBoard.RANK_2 : BitBoard.RANK_7);
 
-            BitBoard king = isWhite ? boardState.WhiteKing : boardState.BlackKing;
-            int kingSquare = king.LsbIndex();
-            List<BitBoard> pinRays = CheckRestriction.GetPinRays(boardState, kingSquare);
             BitBoard fullyPinnedPawns = CheckRestriction.GetHorizontallyStuck(bitboard, pinRays);
             BitBoard pushPinnedPawns = CheckRestriction.GetDiagonallyStuck(bitboard, pinRays);
             BitBoard capturePinnedPawns = CheckRestriction.GetVerticallyStuck(bitboard, pinRays);
@@ -103,10 +113,10 @@ namespace Engine.MoveGeneration
                 bool promotionCondition = isWhite ? ((1UL << targetSquare & BitBoard.RANK_8) != 0) : ((1UL << targetSquare & BitBoard.RANK_1) != 0);
                 if (promotionCondition)
                 {
+                    moves.Add(new Move(startSquare, targetSquare, isCapture, PieceType.Pawn, PromotionType.Queen));
+                    moves.Add(new Move(startSquare, targetSquare, isCapture, PieceType.Pawn, PromotionType.Rook));
                     moves.Add(new Move(startSquare, targetSquare, isCapture, PieceType.Pawn, PromotionType.Knight));
                     moves.Add(new Move(startSquare, targetSquare, isCapture, PieceType.Pawn, PromotionType.Bishop));
-                    moves.Add(new Move(startSquare, targetSquare, isCapture, PieceType.Pawn, PromotionType.Rook));
-                    moves.Add(new Move(startSquare, targetSquare, isCapture, PieceType.Pawn, PromotionType.Queen));
                 }
                 else
                 {
@@ -177,6 +187,10 @@ namespace Engine.MoveGeneration
         {
             List<Move> moves = [];
             int startSquare;
+
+            // Knights cannot move if pinned
+            bitboard &= ~CheckRestriction.GetRestrictedPieces(bitboard, pinRays);
+
             while ((startSquare = BitBoard.PopLSB(ref bitboard)) != -1)
             {
                 BitBoard knightMoves = magics.GetKnightMoves(startSquare);
@@ -193,41 +207,64 @@ namespace Engine.MoveGeneration
             return moves;
         }
 
-        List<Move> GenerateBishopMoves(BitBoard bitboard)
+        List<Move> GenerateBishopMoves(BitBoard bitboard, bool isQueen = false)
         {
             List<Move> moves = [];
             int startSquare;
+
+            // Bishops cannot move if pinned along a rank or file
+            bitboard &= ~CheckRestriction.GetHorizontallyStuck(bitboard, pinRays);
+            bitboard &= ~CheckRestriction.GetVerticallyStuck(bitboard, pinRays);
+
             while ((startSquare = BitBoard.PopLSB(ref bitboard)) != -1)
             {
                 BitBoard bishopMoves = magics.GetBishopAttacks(startSquare, boardState.AllPieces.ToU64());
                 bishopMoves &= ~boardState.FriendlyPieces;
+                bool isPinned = CheckRestriction.GetDiagonallyStuck(BitBoard.FromSquare(startSquare), pinRays) != 0;
 
                 while (bishopMoves != 0)
                 {
                     int targetSquare = BitBoard.PopLSB(ref bishopMoves);
+
+                    if (isPinned && !BoardHelper.AreDiagonallyAligned(startSquare, targetSquare))
+                        continue; // Skip moves that are not along the pin ray (no need to check for the direction of the diagonal, you cannot end on another pin ray square anyway)
+
                     BitBoard targetMask = 1UL << targetSquare;
                     bool isCapture = (targetMask & boardState.EnemyPieces) != 0;
-                    moves.Add(new Move(startSquare, targetSquare, isCapture, PieceType.Bishop));
+                    moves.Add(new Move(startSquare, targetSquare, isCapture, isQueen ? PieceType.Queen : PieceType.Bishop));
                 }
             }
             return moves;
         }
 
-        List<Move> GenerateRookMoves(BitBoard bitboard)
+        List<Move> GenerateRookMoves(BitBoard bitboard, bool isQueen = false)
         {
             List<Move> moves = [];
             int startSquare;
+
+            // Rooks cannot move if pinned along a diagonal
+            bitboard &= ~CheckRestriction.GetDiagonallyStuck(bitboard, pinRays);
+
             while ((startSquare = BitBoard.PopLSB(ref bitboard)) != -1)
             {
                 BitBoard rookMoves = magics.GetRookAttacks(startSquare, boardState.AllPieces.ToU64());
                 rookMoves &= ~boardState.FriendlyPieces;
+                bool isVerticallyPinned = CheckRestriction.GetVerticallyStuck(BitBoard.FromSquare(startSquare), pinRays) != 0;
+                bool isHorizontallyPinned = CheckRestriction.GetHorizontallyStuck(BitBoard.FromSquare(startSquare), pinRays) != 0;
 
                 while (rookMoves != 0)
                 {
                     int targetSquare = BitBoard.PopLSB(ref rookMoves);
+
+                    if (isVerticallyPinned && !BoardHelper.AreVerticallyAligned(startSquare, targetSquare))
+                        continue; // Skip moves that are not along the pin ray
+
+                    else if (isHorizontallyPinned && !BoardHelper.AreHorizontallyAligned(startSquare, targetSquare))
+                        continue; // Skip moves that are not along the pin ray
+
                     BitBoard targetMask = 1UL << targetSquare;
                     bool isCapture = (targetMask & boardState.EnemyPieces) != 0;
-                    moves.Add(new Move(startSquare, targetSquare, isCapture, PieceType.Rook));
+                    moves.Add(new Move(startSquare, targetSquare, isCapture, isQueen ? PieceType.Queen : PieceType.Rook));
                 }
             }
             return moves;
@@ -235,7 +272,7 @@ namespace Engine.MoveGeneration
 
         List<Move> GenerateQueenMoves(BitBoard bitboard)
         {
-            List<Move> moves = [.. GenerateBishopMoves(bitboard), .. GenerateRookMoves(bitboard)];
+            List<Move> moves = [.. GenerateBishopMoves(bitboard, true), .. GenerateRookMoves(bitboard, true)];
             return moves;
         }
 

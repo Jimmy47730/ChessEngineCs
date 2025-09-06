@@ -10,36 +10,50 @@ namespace ChessEngine.Tests;
 
 public class MoveGenTests
 {
-    [Fact]
-    public void TestStartPosition()
+    private Dictionary<string, Dictionary<int, int>> expectedPerftCounts = new()
     {
-        // Arrange
-        PseudoLegal moveGen = PseudoLegal.Instance();
-        BoardState currentBoard = FenUtility.ReadFen();
+        { "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", new Dictionary<int, int> { { 1, 20 }, { 2, 400 }, { 3, 8902 }, { 4, 197281 } } },
+    };
 
-        int GetLegalMoveCount(int depth)
+    [Fact]
+    public void PerftTests()
+    {
+        foreach (var (fen, expectedCounts) in expectedPerftCounts)
         {
-            if (depth == 0) return 1;
-
-            List<Move> legalMoves = moveGen.GenerateMoves(currentBoard);
-            int numPositions = 0;
-            foreach (Move move in legalMoves)
+            BoardState board = new(fen);
+            foreach (var (depth, expectedCount) in expectedCounts)
             {
-                BoardState oldBoard = currentBoard;
-                currentBoard = currentBoard.ApplyMove(move);
-                numPositions += GetLegalMoveCount(depth - 1);
-                currentBoard = oldBoard;
+                Assert.Equal(expectedCount, GetPerftResults(board, depth).Count);
             }
-            return numPositions;
         }
-
-        Assert.Equal(20, GetLegalMoveCount(1));
-        Assert.Equal(400, GetLegalMoveCount(2));
     }
 
     [Fact]
     public void UselessTest()
     {
         Assert.True(true);
+    }
+
+
+    public static List<Move> GetPerftResults(BoardState startingBoard, int depth)
+    {
+        MoveGenerator moveGen = MoveGenerator.Instance();
+        List<Move> legalMoves = moveGen.GenerateMoves(startingBoard);
+        List<Move> perftResults = [];
+
+        foreach (Move move in legalMoves)
+        {
+            BoardState newBoard = startingBoard.ApplyMove(move);
+            if (depth == 1)
+            {
+                perftResults.Add(move);
+            }
+            else
+            {
+                perftResults.AddRange(GetPerftResults(newBoard, depth - 1));
+            }
+        }
+
+        return perftResults;
     }
 }

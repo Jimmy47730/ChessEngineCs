@@ -60,6 +60,15 @@ namespace Core.Board
             this.hashKey = ZobristHasher.ComputeHash(this);
         }
 
+        public BoardState(BoardState other)
+        {
+            this = other;
+        }
+
+        public BoardState(string fen)
+        {
+            this = new BoardState(FenUtility.ReadFen(fen));
+        }
         // Properties
         public readonly BitBoard WhitePawns => whitePawns;
         public readonly BitBoard WhiteKnights => whiteKnights;
@@ -150,9 +159,13 @@ namespace Core.Board
                 throw new ArgumentException($"No piece found at fromSquare {fromSquare} for move {move}. PieceName: {pieceMoved}. BoardState: \n{boardState}");
             PieceName pieceCaptured = boardState.GetPieceAtSquare(toSquare) != '\0' ? BoardHelper.GetPieceName(boardState.GetPieceAtSquare(toSquare)) : PieceName.None;
             bool isWhite = pieceMoved < PieceName.BlackPawn;
-            BitBoard[] bitboards = boardState.Bitboards;
-            char[] pieceArray = boardState.PieceArray;
-            bool[] castlingRights = boardState.CastlingRights;
+
+            // IMPORTANT: BoardState is a struct holding references to arrays. To keep immutability semantics
+            // we must clone the underlying arrays before mutating, otherwise earlier states (e.g. root position
+            // reused in perft) get unintentionally modified causing later moves to fail (e.g. missing pawn at a2).
+            BitBoard[] bitboards = boardState.Bitboards; // This already returns a fresh array copy of value type BitBoards
+            char[] pieceArray = (char[])boardState.PieceArray.Clone();
+            bool[] castlingRights = (bool[])boardState.CastlingRights.Clone();
 
             // Index validation
             void ValidateSquare(int square, string name)
@@ -163,13 +176,14 @@ namespace Core.Board
             ValidateSquare(fromSquare, nameof(fromSquare));
             ValidateSquare(toSquare, nameof(toSquare));
 
-            // Before move processing - store the piece character
+            // Before move processing - store the piece character (works on cloned array)
             char pieceChar = pieceArray[fromSquare];
             pieceArray[fromSquare] = '\0';
 
             if (move.IsPromotion)
             {
-                bitboards[(int)pieceMoved].ClearBit(fromSquare);
+                // Remove the pawn
+                bitboards[(int)pieceMoved] = bitboards[(int)pieceMoved].ClearBit(fromSquare);
                 PieceName promotedPiece = promotion switch
                 {
                     PromotionType.Knight => isWhite ? PieceName.WhiteKnight : PieceName.BlackKnight,
@@ -178,18 +192,20 @@ namespace Core.Board
                     PromotionType.Queen => isWhite ? PieceName.WhiteQueen : PieceName.BlackQueen,
                     _ => throw new ArgumentException("Invalid promotion type")
                 };
-                bitboards[(int)promotedPiece].SetBit(toSquare);
+                bitboards[(int)promotedPiece] = bitboards[(int)promotedPiece].SetBit(toSquare);
                 pieceArray[toSquare] = BoardHelper.GetPieceChar(promotedPiece);
             }
             else
             {
                 pieceArray[toSquare] = pieceChar; // Use the stored character
-                bitboards[(int)pieceMoved].SetBit(toSquare).ClearBit(fromSquare);
-
+                // Update moved piece bitboard (must assign result back!)
+                bitboards[(int)pieceMoved] = bitboards[(int)pieceMoved].ClearBit(fromSquare).SetBit(toSquare);
             }
 
-            if (move.IsCapture && !move.IsEnPassant)
-                bitboards[(int)pieceCaptured].ClearBit(toSquare);
+            if (move.IsCapture && !move.IsEnPassant && pieceCaptured != PieceName.None)
+            {
+                bitboards[(int)pieceCaptured] = bitboards[(int)pieceCaptured].ClearBit(toSquare);
+            }
 
             if (move.IsCastling)
             {
@@ -198,7 +214,7 @@ namespace Core.Board
                 ValidateSquare(rookFromSquare, nameof(rookFromSquare));
                 ValidateSquare(rookToSquare, nameof(rookToSquare));
                 PieceName rookPiece = isWhite ? PieceName.WhiteRook : PieceName.BlackRook;
-                bitboards[(int)rookPiece].SetBit(rookToSquare).ClearBit(rookFromSquare);
+                bitboards[(int)rookPiece] = bitboards[(int)rookPiece].ClearBit(rookFromSquare).SetBit(rookToSquare);
                 pieceArray[rookToSquare] = pieceArray[rookFromSquare];
                 pieceArray[rookFromSquare] = '\0';
             }
@@ -207,7 +223,7 @@ namespace Core.Board
                 int capturedPawnSquare = isWhite ? toSquare - 8 : toSquare + 8;
                 ValidateSquare(capturedPawnSquare, nameof(capturedPawnSquare));
                 PieceName capturedPawnPiece = isWhite ? PieceName.BlackPawn : PieceName.WhitePawn;
-                bitboards[(int)capturedPawnPiece].ClearBit(capturedPawnSquare);
+                bitboards[(int)capturedPawnPiece] = bitboards[(int)capturedPawnPiece].ClearBit(capturedPawnSquare);
                 pieceArray[capturedPawnSquare] = '\0';
             }
 
@@ -221,7 +237,9 @@ namespace Core.Board
 
             // Update the full move number
             int fullMoveNumber = boardState.FullMoveNumber;
-            if (isWhite) // Move number increments only after white's move
+            // NOTE: In FEN the full move number increments after Black's move. Existing logic incremented after White.
+            // Keeping behaviour consistent with FEN spec here.
+            if (!isWhite) // Increment after black's move
                 fullMoveNumber++;
 
             // Update the en passant square

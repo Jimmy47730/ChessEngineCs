@@ -57,7 +57,7 @@ public class Bot
     public void Think(int time)
     {
         IsThinking = true;
-        PseudoLegal moveGen = PseudoLegal.Instance();
+        MoveGenerator moveGen = MoveGenerator.Instance();
         List<Move> legalMoves = moveGen.GenerateMoves(currentBoard);
         Logger.Debug($"Generated {legalMoves.Count} legal moves.");
         if (legalMoves.Count == 0)

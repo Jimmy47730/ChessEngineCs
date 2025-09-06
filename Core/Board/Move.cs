@@ -5,15 +5,15 @@ namespace Core.Board
     public readonly struct Move
     {
         /*
-            Moves are represented as a 23-bit unsigned integer (uint).
-            KK MMM PPP C SSSS FFFFFF TTTTTT
-            KK: Check flag
-            MMM: Moved piece
-            PPP: Promoted piece (0-4, where 0 is no promotion)
-            C: Capture flag
-            SSSS: Special move flags (e.g., castling, en passant, etc.)
-            FFFFFF: From square (0-63)
-            TTTTTT: To square (0-63)
+            Moves are represented as a 32-bit unsigned integer (uint).
+            CCC MMMMM PPP SSSSSSS FFFFFF TTTTTT
+            CCC: Check flag (bits 29-31, 3 bits)
+            MMMMM: Moved piece (bits 24-28, 5 bits)
+            PPP: Promoted piece (bits 21-23, 3 bits, 0-4, where 0 is no promotion)
+            C: Capture flag (bit 20, 1 bit)
+            SSSSSSS: Special move flags (bits 13-19, 7 bits, e.g., castling, en passant, etc.)
+            FFFFFF: From square (bits 7-12, 6 bits, 0-63)
+            TTTTTT: To square (bits 0-6, 6 bits, 0-63)
 
             When comparing two moves with == operator, only the from and to squares are compared.
             The special move type and capture flag are not considered in the comparison.
@@ -51,20 +51,21 @@ namespace Core.Board
         // Move data
         private readonly uint moveData;
 
-        // Masks and shifts for extracting move components
-        private const uint CheckMask = 0xC0000000u;
-        private const uint MovedPieceMask = 0x3C000000u;
-        private const uint PromotedPieceMask = 0x03000000u;
-        private const uint CaptureMask = 0x00800000u;
-        private const uint SpecialMoveMask = 0x007F0000u;
-        private const uint FromSquareMask = 0x0000FF00u;
-        private const uint ToSquareMask = 0x000000FFu;
-        private const int CheckShift = 30;
-        private const int MovedPieceShift = 26;
-        private const int PromotedPieceShift = 24;
-        private const int SpecialMoveShift = 16;
-        private const int FromSquareShift = 8;
-        private const int ToSquareShift = 0;
+    // Masks and shifts for extracting move components
+    // Expanded PromotedPiece to 3 bits (0-4), shifted other fields accordingly
+    private const uint CheckMask = 0xE0000000u;         // 3 bits (bits 29-31)
+    private const uint MovedPieceMask = 0x1F000000u;    // 5 bits (bits 24-28)
+    private const uint PromotedPieceMask = 0x00E00000u; // 3 bits (bits 21-23)
+    private const uint CaptureMask = 0x00100000u;       // 1 bit  (bit 20)
+    private const uint SpecialMoveMask = 0x000FE000u;   // 7 bits (bits 13-19)
+    private const uint FromSquareMask = 0x00001F80u;    // 6 bits (bits 7-12)
+    private const uint ToSquareMask = 0x0000007Fu;      // 6 bits (bits 0-6)
+    private const int CheckShift = 29;
+    private const int MovedPieceShift = 24;
+    private const int PromotedPieceShift = 21;
+    private const int SpecialMoveShift = 13;
+    private const int FromSquareShift = 7;
+    private const int ToSquareShift = 0;
 
         // Properties to access move components
         public bool IsValid => moveData != 0u;
