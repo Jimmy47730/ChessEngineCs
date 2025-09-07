@@ -73,6 +73,26 @@ public static class BoardHelper
         };
     }
 
+    public static PieceName GetPieceName(SideColor color, PieceType pieceType)
+    {
+        return (color, pieceType) switch
+        {
+            (SideColor.White, PieceType.Pawn) => PieceName.WhitePawn,
+            (SideColor.White, PieceType.Knight) => PieceName.WhiteKnight,
+            (SideColor.White, PieceType.Bishop) => PieceName.WhiteBishop,
+            (SideColor.White, PieceType.Rook) => PieceName.WhiteRook,
+            (SideColor.White, PieceType.Queen) => PieceName.WhiteQueen,
+            (SideColor.White, PieceType.King) => PieceName.WhiteKing,
+            (SideColor.Black, PieceType.Pawn) => PieceName.BlackPawn,
+            (SideColor.Black, PieceType.Knight) => PieceName.BlackKnight,
+            (SideColor.Black, PieceType.Bishop) => PieceName.BlackBishop,
+            (SideColor.Black, PieceType.Rook) => PieceName.BlackRook,
+            (SideColor.Black, PieceType.Queen) => PieceName.BlackQueen,
+            (SideColor.Black, PieceType.King) => PieceName.BlackKing,
+            _ => throw new ArgumentOutOfRangeException($"Invalid color/piece combination: {color}, {pieceType}")
+        };
+    }
+
     public static bool AreDiagonallyAligned(int square1, int square2)
     {
         int rank1 = square1 / 8, file1 = square1 % 8;

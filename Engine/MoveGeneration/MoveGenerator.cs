@@ -40,27 +40,17 @@ namespace Engine.MoveGeneration
             int kingSquare = (CurrentColor == SideColor.White ? boardState.WhiteKing : boardState.BlackKing).LsbIndex();
             this.pinRays = CheckRestriction.GetPinRays(boardState, kingSquare);
 
-            BitBoard allRays = BitBoard.Empty;
-            foreach (var ray in pinRays)
-            {
-                allRays |= ray;
-            }
-            Logger.Debug($"Pin rays for {CurrentColor}: {allRays}");
-
             List<Move> moves = [];
 
             PieceName kingPiece = CurrentColor == SideColor.White ? PieceName.WhiteKing : PieceName.BlackKing;
             BitBoard kingBitboard = boardState.GetBitboard(kingPiece);
             moves.AddRange(GenerateKingMoves(kingBitboard));
 
-            int startIndex = CurrentColor == SideColor.White ? 0 : 6;
-            int endIndex = startIndex + 5; // Exclude the king (already added)
-
-            for (int i = startIndex; i <= endIndex; i++) // Generate moves for all other pieces (Only the current color's pieces)
+            foreach (var piece in Enum.GetValues<PieceType>())
             {
-                PieceName piece = (PieceName)i;
-                BitBoard pieceBitboard = boardState.GetBitboard(piece);
-                moves.AddRange(GenerateMovesForPiece(piece, pieceBitboard));
+                BitBoard pieceBitboard = boardState.GetBitboard(CurrentColor, piece);
+                PieceName pieceName = BoardHelper.GetPieceName(CurrentColor, piece);
+                moves.AddRange(GenerateMovesForPiece(pieceName, pieceBitboard));
             }
 
             return moves;
@@ -76,13 +66,13 @@ namespace Engine.MoveGeneration
                 PieceName.WhiteBishop => GenerateBishopMoves(bitboard),
                 PieceName.WhiteRook => GenerateRookMoves(bitboard),
                 PieceName.WhiteQueen => GenerateQueenMoves(bitboard),
-                PieceName.WhiteKing => GenerateKingMoves(bitboard),
+                PieceName.WhiteKing => moves, // King moves are generated separately at the start
                 PieceName.BlackPawn => GeneratePawnMoves(bitboard, false),
                 PieceName.BlackKnight => GenerateKnightMoves(bitboard),
                 PieceName.BlackBishop => GenerateBishopMoves(bitboard),
                 PieceName.BlackRook => GenerateRookMoves(bitboard),
                 PieceName.BlackQueen => GenerateQueenMoves(bitboard),
-                PieceName.BlackKing => GenerateKingMoves(bitboard),
+                PieceName.BlackKing => moves, // King moves are generated separately at the start
                 _ => moves
             };
         }
@@ -308,8 +298,7 @@ namespace Engine.MoveGeneration
 
                 return true;
             }
-
-
+            
             bool isWhite = CurrentColor == SideColor.White;
             CastlingRightsIndex shortCastlingIndex = isWhite ? CastlingRightsIndex.WhiteKingSide : CastlingRightsIndex.BlackKingSide;
             CastlingRightsIndex longCastlingIndex = isWhite ? CastlingRightsIndex.WhiteQueenSide : CastlingRightsIndex.BlackQueenSide;

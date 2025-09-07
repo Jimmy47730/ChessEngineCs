@@ -156,7 +156,8 @@ namespace Core.Board
             PromotionType promotion = move.PromotedPiece;
             PieceName pieceMoved = BoardHelper.GetPieceName(boardState.GetPieceAtSquare(fromSquare));
             if (pieceMoved == PieceName.None)
-                throw new ArgumentException($"No piece found at fromSquare {fromSquare} for move {move}. PieceName: {pieceMoved}. BoardState: \n{boardState}");
+                throw new ArgumentException($"No piece found at fromSquare {fromSquare} for move {move}. PieceName: {pieceMoved}");
+
             PieceName pieceCaptured = boardState.GetPieceAtSquare(toSquare) != '\0' ? BoardHelper.GetPieceName(boardState.GetPieceAtSquare(toSquare)) : PieceName.None;
             bool isWhite = pieceMoved < PieceName.BlackPawn;
 
@@ -180,10 +181,16 @@ namespace Core.Board
             char pieceChar = pieceArray[fromSquare];
             pieceArray[fromSquare] = '\0';
 
+            // Map PieceName (1..12) -> bitboards index (0..11)
+            static int BbIndex(PieceName pn) => pn == PieceName.None ? -1 : ((int)pn - 1);
+            int movedIndex = BbIndex(pieceMoved);
+            int capturedIndex = BbIndex(pieceCaptured);
+
             if (move.IsPromotion)
             {
-                // Remove the pawn
-                bitboards[(int)pieceMoved] = bitboards[(int)pieceMoved].ClearBit(fromSquare);
+                // Remove the pawn from its original bitboard
+                if (movedIndex >= 0)
+                    bitboards[movedIndex] = bitboards[movedIndex].ClearBit(fromSquare);
                 PieceName promotedPiece = promotion switch
                 {
                     PromotionType.Knight => isWhite ? PieceName.WhiteKnight : PieceName.BlackKnight,
@@ -192,19 +199,20 @@ namespace Core.Board
                     PromotionType.Queen => isWhite ? PieceName.WhiteQueen : PieceName.BlackQueen,
                     _ => throw new ArgumentException("Invalid promotion type")
                 };
-                bitboards[(int)promotedPiece] = bitboards[(int)promotedPiece].SetBit(toSquare);
+                int promotedIndex = BbIndex(promotedPiece);
+                bitboards[promotedIndex] = bitboards[promotedIndex].SetBit(toSquare);
                 pieceArray[toSquare] = BoardHelper.GetPieceChar(promotedPiece);
             }
             else
             {
                 pieceArray[toSquare] = pieceChar; // Use the stored character
-                // Update moved piece bitboard (must assign result back!)
-                bitboards[(int)pieceMoved] = bitboards[(int)pieceMoved].ClearBit(fromSquare).SetBit(toSquare);
+                if (movedIndex >= 0)
+                    bitboards[movedIndex] = bitboards[movedIndex].ClearBit(fromSquare).SetBit(toSquare);
             }
 
-            if (move.IsCapture && !move.IsEnPassant && pieceCaptured != PieceName.None)
+            if (move.IsCapture && !move.IsEnPassant && pieceCaptured != PieceName.None && capturedIndex >= 0)
             {
-                bitboards[(int)pieceCaptured] = bitboards[(int)pieceCaptured].ClearBit(toSquare);
+                bitboards[capturedIndex] = bitboards[capturedIndex].ClearBit(toSquare);
             }
 
             if (move.IsCastling)
@@ -214,7 +222,8 @@ namespace Core.Board
                 ValidateSquare(rookFromSquare, nameof(rookFromSquare));
                 ValidateSquare(rookToSquare, nameof(rookToSquare));
                 PieceName rookPiece = isWhite ? PieceName.WhiteRook : PieceName.BlackRook;
-                bitboards[(int)rookPiece] = bitboards[(int)rookPiece].ClearBit(rookFromSquare).SetBit(rookToSquare);
+                int rookIndex = BbIndex(rookPiece);
+                bitboards[rookIndex] = bitboards[rookIndex].ClearBit(rookFromSquare).SetBit(rookToSquare);
                 pieceArray[rookToSquare] = pieceArray[rookFromSquare];
                 pieceArray[rookFromSquare] = '\0';
             }
@@ -223,7 +232,8 @@ namespace Core.Board
                 int capturedPawnSquare = isWhite ? toSquare - 8 : toSquare + 8;
                 ValidateSquare(capturedPawnSquare, nameof(capturedPawnSquare));
                 PieceName capturedPawnPiece = isWhite ? PieceName.BlackPawn : PieceName.WhitePawn;
-                bitboards[(int)capturedPawnPiece] = bitboards[(int)capturedPawnPiece].ClearBit(capturedPawnSquare);
+                int capPawnIndex = BbIndex(capturedPawnPiece);
+                bitboards[capPawnIndex] = bitboards[capPawnIndex].ClearBit(capturedPawnSquare);
                 pieceArray[capturedPawnSquare] = '\0';
             }
 
@@ -237,6 +247,7 @@ namespace Core.Board
 
             // Update the full move number
             int fullMoveNumber = boardState.FullMoveNumber;
+            
             // NOTE: In FEN the full move number increments after Black's move. Existing logic incremented after White.
             // Keeping behaviour consistent with FEN spec here.
             if (!isWhite) // Increment after black's move
