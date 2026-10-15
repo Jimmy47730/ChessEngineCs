@@ -92,7 +92,7 @@ public class UCI
             blackInc = int.Parse(GetLabelledValue(message, "binc", goLabels));
         }
 
-        int time = player.DefineThinkingTime(whiteTime, blackTime, whiteInc, blackInc);
+        int time = Bot.DefineThinkingTime(whiteTime, blackTime, whiteInc, blackInc);
         Logger.Info($"Allocated thinking time: {time} ms");
         player.Think(time);
     }
@@ -102,7 +102,7 @@ public class UCI
         message = message.Trim();
         if (message.Contains("startpos"))
         {
-            player.SetPosition(FenUtility.defaultFen);
+            player.SetPosition();
         }
         else if (message.Contains("fen"))
         {

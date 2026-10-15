@@ -1,6 +1,4 @@
-using System;
-using Core.Helpers;
-using Core.Board;
+using Core.DataStructures;
 
 namespace Core.Helpers
 {
@@ -41,32 +39,34 @@ namespace Core.Helpers
             return BitConverter.ToUInt64(buffer, 0);
         }
 
-        // Computes the zobrist hash for a given board state
-        public static ulong ComputeHash(BoardState state)
+        // Computes the zobrist hash from the board state parsed by the Board constructor.
+        // squares are ordered from a1 to h8 and contain the FEN character for each piece,
+        // or a space for an empty square.
+        public static ulong ComputeHash(char[] squares, SideColor sideToMove, int enPassantSquare, bool[] castlingRights)
         {
             ulong hash = 0UL;
-            var pieceArray = state.PieceArray;
-            for (int sq = 0; sq < 64; sq++)
+            if (squares == null || squares.Length != BoardSquares)
+                throw new ArgumentException("The board must contain exactly 64 squares.", nameof(squares));
+
+            for (int square = 0; square < BoardSquares; square++)
             {
-                char piece = pieceArray[sq];
-                if (piece == '\0') continue;
-                int pieceIndex = PieceCharToIndex(piece);
+                int pieceIndex = PieceCharToIndex(squares[square]);
                 if (pieceIndex >= 0)
-                    hash ^= PieceSquareRandoms[pieceIndex, sq];
+                    hash ^= PieceSquareRandoms[pieceIndex, square];
             }
-            // Castling rights (assume order: WhiteK, WhiteQ, BlackK, BlackQ)
-            var castling = state.CastlingRights;
-            for (int i = 0; i < CastlingRightsCount; i++)
-                if (castling[i]) hash ^= CastlingRandoms[i];
-            // En passant
-            int ep = state.EnPassantSquare;
-            if (ep >= 0 && ep < 64)
-            {
-                int file = ep % 8;
-                hash ^= EnPassantRandoms[file];
-            }
+
+            // Castling rights (KQkq).
+            if (castlingRights[0]) hash ^= CastlingRandoms[0];
+            if (castlingRights[1]) hash ^= CastlingRandoms[1];
+            if (castlingRights[2]) hash ^= CastlingRandoms[2];
+            if (castlingRights[3]) hash ^= CastlingRandoms[3];
+
+            // En passant square, such as e3.
+            if (enPassantSquare >= 0 && enPassantSquare < EnPassantFiles)
+                hash ^= EnPassantRandoms[enPassantSquare];
+
             // Side to move
-            if (state.SideToMove == SideColor.Black)
+            if (sideToMove == SideColor.Black)
                 hash ^= SideToMoveRandom;
             return hash;
         }

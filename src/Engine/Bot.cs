@@ -1,25 +1,28 @@
 using Chess;
-using Core.Board;
 using Core.Helpers;
+using Core.DataStructures;
 using Engine.MoveGeneration;
 namespace Engine;
 
 public class Bot
 {
     public bool IsThinking { get; private set; }
-    private BoardState currentBoard;
+    private Board currentBoard;
     public Action<string>? OnMoveChosen;
 
     // Bot implementation
 
     public void NotifyNewGame()
     {
-        currentBoard = FenUtility.ReadFen();
+        currentBoard = new Board();
     }
 
-    public void SetPosition(string fen)
+    public void SetPosition(string fen = "")
     {
-        currentBoard = FenUtility.ReadFen(fen);
+        if (string.IsNullOrEmpty(fen))
+            currentBoard = new Board();
+        else
+            currentBoard = new Board(fen);
     }
 
     public string GetBoardDiagram()
@@ -34,12 +37,12 @@ public class Bot
 
     public void ApplyMove(Move move)
     {
-        currentBoard = currentBoard.ApplyMove(move);
+        throw new NotImplementedException();
     }
 
     public void ApplyMove(string moveUci)
     {
-        currentBoard = currentBoard.ApplyMove(moveUci);
+        throw new NotImplementedException();
     }
 
     public void StopThinking()
@@ -48,7 +51,7 @@ public class Bot
     }
 
     // Time is always treated in milliseconds
-    public int DefineThinkingTime(int whiteTime, int blackTime, int whiteInc, int blackInc)
+    public static int DefineThinkingTime(int whiteTime, int blackTime, int whiteInc, int blackInc)
     {
         // Temporary implementation
         return whiteTime / 20 + whiteInc;
@@ -57,8 +60,7 @@ public class Bot
     public void Think(int time)
     {
         IsThinking = true;
-        MoveGenerator moveGen = MoveGenerator.Instance();
-        List<Move> legalMoves = moveGen.GenerateMoves(currentBoard);
+        List<Move> legalMoves = MoveGenerator.GenerateMoves(currentBoard);
         Logger.Debug($"Generated {legalMoves.Count} legal moves.");
         if (legalMoves.Count == 0)
         {
@@ -84,7 +86,7 @@ public class Bot
 
     private void OnSearchComplete(Move bestMove)
     {
-        string bestMoveUci = bestMove.ToUci();
+        string bestMoveUci = StringRepr.MoveToUci(bestMove);
         Logger.Info($"Chosen move: {bestMove} ({bestMoveUci})");
         OnMoveChosen?.Invoke(bestMoveUci);
     }
