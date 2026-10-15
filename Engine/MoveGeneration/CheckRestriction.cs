@@ -17,14 +17,10 @@ public static class CheckRestriction
         BitBoard kingRays = magics.GetRays(kingSquare);
 
         diagonalSliders &= kingRays;
-        if (diagonalSliders == 0)
-            return [];
 
         List<BitBoard> pinRays = GetPossiblePinRays(diagonalSliders, kingSquare, true);
 
         straightSliders &= kingRays;
-        if (straightSliders == 0)
-            return pinRays;
 
         pinRays.AddRange(GetPossiblePinRays(straightSliders, kingSquare, false));
 
@@ -60,7 +56,7 @@ public static class CheckRestriction
             bool isSliderDiagonal = Math.Abs(deltaRank) == 1 && Math.Abs(deltaFile) == 1;
             bool isSliderStraight = (deltaRank == 0 && deltaFile != 0) || (deltaFile == 0 && deltaRank != 0);
 
-            if ((isDiagonal && !isSliderDiagonal) || (!isDiagonal && !isSliderStraight))
+            if ((isDiagonal && !isSliderDiagonal) || (!isDiagonal && isSliderStraight))
             continue;
 
             int rank = kingRank + deltaRank, file = kingFile + deltaFile;
@@ -150,5 +146,26 @@ public static class CheckRestriction
         }
         return stuckPieces;
     }
-    
+
+    public static BitBoard GetUnsafeKingSquares(BoardState board, int kingSquare, out BitBoard checkingPieces)
+    {
+        SideColor kingColor = board.GetPieceAtSquare(kingSquare) == 'K' ? SideColor.White : SideColor.Black;
+        SideColor attackingColor = kingColor == SideColor.White ? SideColor.Black : SideColor.White;
+        BitBoard kingBitboard = board.GetBitboard(kingColor, PieceType.King);
+
+        BitBoard attackingCoverage = AttackCoverage.GetAttackCoverage(board, attackingColor, out checkingPieces);
+
+        return attackingCoverage;
+    }
+
+    public static BitBoard SquaresToBlock(BitBoard checkingPieces, int kingSquare)
+    {
+        // If there are multiple checking pieces, the move generation is skipped, so this is not important
+        // If there are none, then every square is good
+        if (checkingPieces.PopCount() != 1)
+            return BitBoard.Full;
+
+        int checkingPieceSquare = checkingPieces.LsbIndex();
+        return BoardHelper.GetLineBitboard(kingSquare, checkingPieceSquare, true);        
+    }
 }

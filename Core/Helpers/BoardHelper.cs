@@ -114,4 +114,102 @@ public static class BoardHelper
 
         return file1 == file2;
     }
+
+    public static ulong GetDiagonalLineBitboard(int square1, int square2, bool includeExtremes)
+    {
+        if (!AreDiagonallyAligned(square1, square2))
+        {
+            return 0;
+        }
+
+        int rank1 = square1 / 8;
+        int file1 = square1 % 8;
+        int rank2 = square2 / 8;
+        int file2 = square2 % 8;
+
+        if (square1 == square2)
+        {
+            return includeExtremes ? 1UL << square1 : 0;
+        }
+
+        int rankStep = Math.Sign(rank2 - rank1);
+        int fileStep = Math.Sign(file2 - file1);
+        ulong lineBitboard = 0;
+
+        for (int rank = rank1, file = file1;
+             rank != rank2;
+             rank += rankStep, file += fileStep)
+        {
+            if (includeExtremes || (rank != rank1 && rank != rank2))
+            {
+                lineBitboard |= 1UL << (rank * 8 + file);
+            }
+        }
+
+        return lineBitboard;
+    }
+
+    public static ulong GetHorizontalLineBitboard(int square1, int square2, bool includeExtremes)
+    {
+        if (!AreHorizontallyAligned(square1, square2))
+        {
+            return 0;
+        }
+
+        int startSquare = Math.Min(square1, square2);
+        int endSquare = Math.Max(square1, square2);
+        ulong lineBitboard = 0;
+
+        for (int square = startSquare; square <= endSquare; square++)
+        {
+            if (includeExtremes || (square > startSquare && square < endSquare))
+            {
+                lineBitboard |= 1UL << square;
+            }
+        }
+
+        return lineBitboard;
+    }
+
+    public static ulong GetVerticalLineBitboard(int square1, int square2, bool includeExtremes)
+    {
+        if (!AreVerticallyAligned(square1, square2))
+        {
+            return 0;
+        }
+
+        int startSquare = Math.Min(square1, square2);
+        int endSquare = Math.Max(square1, square2);
+        ulong lineBitboard = 0;
+
+        for (int square = startSquare; square <= endSquare; square += 8)
+        {
+            if (includeExtremes || (square > startSquare && square < endSquare))
+            {
+                lineBitboard |= 1UL << square;
+            }
+        }
+
+        return lineBitboard;
+    }
+
+    public static ulong GetLineBitboard(int square1, int square2, bool includeExtremes)
+    {
+        if (AreDiagonallyAligned(square1, square2))
+        {
+            return GetDiagonalLineBitboard(square1, square2, includeExtremes);
+        }
+        else if (AreHorizontallyAligned(square1, square2))
+        {
+            return GetHorizontalLineBitboard(square1, square2, includeExtremes);
+        }
+        else if (AreVerticallyAligned(square1, square2))
+        {
+            return GetVerticalLineBitboard(square1, square2, includeExtremes);
+        }
+        else
+        {
+            return 0;
+        }
+    }
 }

@@ -53,5 +53,15 @@ namespace ChessEngine.Tests
             Assert.True((a ^ c).IsSet(1));
             Assert.False((a ^ c).IsSet(3));
         }
+
+        [Fact]
+        public void ShiftMethod()
+        {
+            var b = BitBoard.FromSquare(20);
+            var b2 = b.Shift(1);
+            Assert.True(b2.IsSet(21));
+            var b3 = b2.Shift(-1);
+            Assert.True(b3.IsSet(20));
+        }
     }
 }

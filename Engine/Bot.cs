@@ -70,19 +70,22 @@ public class Bot
         Random rng = new();
         Move bestMove = legalMoves[rng.Next(legalMoves.Count)];
 
+        /*
         Logger.Debug("All legal moves: ");
         foreach (var move in legalMoves)
         {
             Logger.Debug($"{move} ({move.ToUci()})");
         }
+        */
+        Logger.Debug($"Legal moves found: {legalMoves.Count}");
         OnSearchComplete(bestMove);
         IsThinking = false;
     }
 
     private void OnSearchComplete(Move bestMove)
     {
-        Logger.Info($"Chosen move: {bestMove} ({bestMove.ToUci()})");
         string bestMoveUci = bestMove.ToUci();
+        Logger.Info($"Chosen move: {bestMove} ({bestMoveUci})");
         OnMoveChosen?.Invoke(bestMoveUci);
     }
 }

@@ -69,18 +69,11 @@ namespace Core.Board
             return 63 - BitOperations.LeadingZeroCount(bits);
         }
 
-        public readonly BitBoard ShiftLeft(int n)
+        public readonly BitBoard Shift(int n)
         {
-            if (n >= 64) return new BitBoard(0);
-            if (n <= 0) return this;
+            if (n >= 64 || n <= -64) return new BitBoard(0);
+            if (n <= 0) return new BitBoard(bits >> -n);
             return new BitBoard(bits << n);
-        }
-
-        public readonly BitBoard ShiftRight(int n)
-        {
-            if (n >= 64) return new BitBoard(0);
-            if (n <= 0) return this;
-            return new BitBoard(bits >> n);
         }
 
         // Returns a BitBoard with all bits set in the rank of the given square

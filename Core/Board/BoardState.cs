@@ -143,11 +143,15 @@ namespace Core.Board
                 _ => BitBoard.Empty
             };
         }
+
+        public readonly BitBoard GetBitboard(SideColor color)
+        {
+            return color == SideColor.White ? WhitePieces : BlackPieces;
+        }
         public readonly bool IsSquareOccupied(int square) => pieceArray[square] != '\0';
         public readonly char GetPieceAtSquare(int square) => pieceArray[square];
         public readonly bool IsCastlingRightAvailable(CastlingRightsIndex index) => castlingRights[(int)index];
 
-        // Apply move
         public BoardState ApplyMove(Move move)
         {
             BoardState boardState = this;

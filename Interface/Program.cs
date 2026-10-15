@@ -13,7 +13,7 @@ public class Program
                 Logger.Error("Unhandled exception occurred.");
         };
 
-        Console.Clear();
+        // Console.Clear();
         UCI uci = new();
         Logger.Info("Starting Chess Engine...");
 
