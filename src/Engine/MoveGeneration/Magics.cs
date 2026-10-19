@@ -110,6 +110,7 @@ namespace Engine.MoveGeneration
             0x0203040810204080UL, 0x05070a1222428202UL, 0x0a0e152444840404UL, 0x141c2a4988080808UL,
             0x2838549211101010UL, 0x5070a82422212020UL, 0xa0e0504844424140UL, 0x40c0201008040201UL
         ];
+        
         // Constructor and Singleton Instance
         private Magics()
         {
@@ -185,23 +186,23 @@ namespace Engine.MoveGeneration
         }
 
         // Methods to get attacks for pieces
-        public ulong GetBishopAttacks(int square, ulong occupancy)
+        public ulong GetBishopMoves(int square, ulong occupancy)
         {
             occupancy &= bishopMagic[square].mask;
             occupancy *= bishopMagic[square].magic;
             occupancy >>= bishopMagic[square].shift;
             return attackTable[bishopMagic[square].tableOffset + (int)occupancy];
         }
-        public ulong GetRookAttacks(int square, ulong occupancy)
+        public ulong GetRookMoves(int square, ulong occupancy)
         {
             occupancy &= rookMagic[square].mask;
             occupancy *= rookMagic[square].magic;
             occupancy >>= rookMagic[square].shift;
             return attackTable[rookMagic[square].tableOffset + (int)occupancy];
         }
-        public ulong GetQueenAttacks(int square, ulong occupancy)
+        public ulong GetQueenMoves(int square, ulong occupancy)
         {
-            return GetBishopAttacks(square, occupancy) | GetRookAttacks(square, occupancy);
+            return GetBishopMoves(square, occupancy) | GetRookMoves(square, occupancy);
         }
         public ulong GetKnightMoves(int square)
         {
@@ -217,6 +218,9 @@ namespace Engine.MoveGeneration
         {
             return precomputedRays[square];
         }
+
+
+        // The following methods are private and only used in the Init() method.
 
         // Attack masks for bishops and rooks
         private static ulong BishopAttackMask(int square)
@@ -247,7 +251,6 @@ namespace Engine.MoveGeneration
 
             return attacks;
         }
-
         // Generate all possible blocker patterns from a mask
         private static List<ulong> GenerateBlockerPatterns(ulong mask)
         {
@@ -274,7 +277,6 @@ namespace Engine.MoveGeneration
 
             return result;
         }
-
         // Calculate bishop attacks with blockers
         private static ulong CalculateBishopAttacks(int square, ulong blockers)
         {
@@ -313,7 +315,6 @@ namespace Engine.MoveGeneration
 
             return attacks;
         }
-
         // Calculate rook attacks with blockers
         private static ulong CalculateRookAttacks(int square, ulong blockers)
         {

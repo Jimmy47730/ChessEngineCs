@@ -8,6 +8,7 @@ public readonly struct Board
         A Board object represents the state of a chess game.
         Contains the 12 bitboards, the 64 squares, the side to move, the en passant square, and the castling rights.
         The bitboard indexes are determined by the PieceName enum, while the castling rights are determined by the CastlingRightsIndex enum.
+        Remember: all calculations on a board are given from the point of view of the playing side.
     */
     public readonly ulong[] bitboards;
     public readonly char[] squares;
@@ -21,7 +22,28 @@ public readonly struct Board
     // Methods to get the desired bitboard
     public ulong GetBitboard(PieceName pieceName) => bitboards[(int)pieceName];
     public ulong GetBitboard(PieceType pieceType, SideColor sideColor) => bitboards[(int)pieceType + (int)sideColor * 6];
+    public ulong GetSideBitboard(SideColor color)
+    {
+        ulong sideBitboard = 0;
 
+        for (int i = 6 * (int)color; i < 6 + (int)color; i++)
+        {
+            sideBitboard |= bitboards[i];
+        }
+
+        return sideBitboard;
+    }
+    public ulong GetFullBitboard()
+    {
+        ulong fullBitboard = 0;
+
+        for (int i = 0; i < 12; i++)
+        {
+            fullBitboard |= bitboards[i];
+        }
+
+        return fullBitboard;
+    }
     // Constructors
 
     public Board()

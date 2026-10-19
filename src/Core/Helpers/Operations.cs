@@ -1,4 +1,4 @@
-
+using System.Numerics;
 
 namespace Core.Helpers;
 
@@ -26,5 +26,37 @@ public static class Operations
         }
         return rank * 8 + file;
     }
+
+    public static ulong ShiftByInt(ulong bitboard, int n)
+    {
+        if (n > 63 | n < -63)
+            return 0ul;
+        else if (n < 0)
+            return bitboard >> -n;
+        else if (n == 0)
+            return bitboard;
+        return bitboard << n;
+    }
+
+    // Returns index of least-significant set bit, or -1 if empty
+    public static int LsbIndex(ulong bitboard)
+    {
+        if (bitboard == 0) return -1;
+        return BitOperations.TrailingZeroCount(bitboard);
+    }
+
+    public static ulong ClearBit(ulong bitboard, int bit)
+    {
+        return bitboard & ~(1ul << bit);
+    }
+
+    public static int PopLSB(ref ulong bitboard)
+    {
+        int lsbIndex = LsbIndex(bitboard);
+        if (lsbIndex == -1) return -1;
+        bitboard = ClearBit(bitboard, lsbIndex);
+        return lsbIndex;
+    }
+
     
 }
