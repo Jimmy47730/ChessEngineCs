@@ -58,5 +58,14 @@ public static class Operations
         return lsbIndex;
     }
 
+    public static int PopCount(ulong bitboard)
+    {
+        int count = 0;
+        while (PopLSB(ref bitboard) != -1)
+            count++;
+
+        return count;
+    }
+
     
 }

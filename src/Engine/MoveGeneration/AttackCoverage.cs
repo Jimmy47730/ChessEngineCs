@@ -17,7 +17,7 @@ public static class AttackCoverage
         ulong coverage = 0;
 
         // The shifts are saved based on color, with index 0 being towards the 'a' file
-        int[] shifts = color == SideColor.White ? [7, 9] : [-9, 7];
+        int[] shifts = color == SideColor.White ? [7, 9] : [-9, -7];
         
         coverage |= Operations.ShiftByInt(bitboard & ~Bitboards.FILE_A, shifts[0]);
         coverage |= Operations.ShiftByInt(bitboard & ~Bitboards.FILE_H, shifts[1]);

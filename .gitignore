@@ -5,3 +5,5 @@
 ChessEngine.Tests/bin
 ChessEngine.Tests/obj
 ChessEngine.Tests/logs
+/Testing/bin
+/Testing/obj

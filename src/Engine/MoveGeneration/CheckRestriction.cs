@@ -12,6 +12,7 @@ public static class CheckRestriction
             An empty bitboard means the king is not in check
             A single bit set means the king is in a single check and must move, block or capture said piece
             Two bits set means the king is in double check and must move out of check, no other option
+            There can't be more than two bits set: a triple check is impossible
         */
         ulong coverage = AttackCoverage.GetFullCoverage(board);
         ulong kingBitboard = board.GetBitboard(PieceType.King, board.sideToMove);
@@ -25,14 +26,14 @@ public static class CheckRestriction
         // Find the checking piece
         // Simulate an attack from the king to find the checking piece (all captures are symmetrical)
 
-        int[] shifts = board.sideToMove == SideColor.White ? [7, 9] : [-9, 7];
+        int[] shifts = board.sideToMove == SideColor.White ? [7, 9] : [-9, -7];
         ulong pawnBitboard = board.GetBitboard(PieceType.Pawn, enemyColor);
 
         ulong leftPawn = Operations.ShiftByInt(kingBitboard & ~Bitboards.FILE_A, shifts[0]);
         ulong rightPawn = Operations.ShiftByInt(kingBitboard & ~Bitboards.FILE_H, shifts[1]);
         if ((leftPawn & pawnBitboard) != 0)
             checkingPieces |= leftPawn;
-        else if ((rightPawn & pawnBitboard) != 0) // We can use else as a pawn double check is fisically impossible
+        if ((rightPawn & pawnBitboard) != 0)
             checkingPieces |= rightPawn;
 
         // Knight

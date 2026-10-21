@@ -13,10 +13,11 @@
   </ItemGroup>
 
   <!-- Exclude test project sources that live in a subfolder so they don't get
-       compiled into the main executable project. Tests are in
-       ChessEngine.Tests and are a separate project. -->
+       compiled into the main executable project. -->
   <ItemGroup>
     <Compile Remove="ChessEngine.Tests\**\*.cs" />
     <None Remove="ChessEngine.Tests\**\*" />
+    <Compile Remove="Testing\**\*.cs" />
+    <None Remove="Testing\**\*" />
   </ItemGroup>
 </Project>
