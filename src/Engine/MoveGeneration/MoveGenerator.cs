@@ -12,8 +12,8 @@ public class MoveGenerator
         ulong checkingPieces = CheckRestriction.GetCheckingPieces(board);
         ulong allowedDestinations = Bitboards.FULL;
 
-        // If there are 2 checking pieces, the king must move
-        if (Operations.PopCount(checkingPieces) == 2)
+        // If there are 2 checking pieces (or more in a made up position), the king must move
+        if (Operations.PopCount(checkingPieces) >= 2)
             return GenerateKingMoves(board, true);
 
         if (Operations.PopCount(checkingPieces) == 1)
@@ -30,6 +30,11 @@ public class MoveGenerator
 
         // Other pieces' move generation
         List<ulong> pinMasks = CheckRestriction.GetPinnedPieceMasks(board);
+        moves.AddRange(GeneratePawnMoves(board, allowedDestinations, pinMasks));
+        moves.AddRange(GenerateKnightMoves(board, allowedDestinations, pinMasks));
+        moves.AddRange(GenerateBishopMoves(board, allowedDestinations, pinMasks));
+        moves.AddRange(GenerateRookMoves(board, allowedDestinations, pinMasks));
+        moves.AddRange(GenerateQueenMoves(board, allowedDestinations, pinMasks));
 
         return moves;
     }
@@ -197,6 +202,115 @@ public class MoveGenerator
             }
         }
 
+        return moves;
+    }
+
+    private static List<Move> GenerateKnightMoves(Board board, ulong allowedDestinations, List<ulong> pinRays)
+    {
+        List<Move> moves = [];
+        ulong knightBitboard = board.GetBitboard(PieceType.Knight, board.sideToMove);
+        int startSquare;
+
+        while ((startSquare = Operations.PopLSB(ref knightBitboard)) != -1)
+        {
+            bool isPinned = false;
+            foreach (ulong ray in pinRays)
+            {
+                if (Operations.IsSet(ray, startSquare))
+                {
+                    isPinned = true;
+                    break;
+                }
+            }
+            if (isPinned) // Pinned knights can't move in any direction
+                break;
+            
+            ulong allDestinations = Magics.Instance().GetKnightMoves(startSquare);
+            allDestinations &= allowedDestinations & ~board.GetSideBitboard(board.sideToMove);
+
+            moves.AddRange(CreateMoves(startSquare, allDestinations, board.GetSideBitboard(1 - board.sideToMove)));
+        }
+
+        return moves;
+    }
+
+    private static List<Move> GenerateBishopMoves(Board board, ulong allowedDestinations, List<ulong> pinRays)
+    {
+        List<Move> moves = [];
+        ulong bishopBitboard = board.GetBitboard(PieceType.Bishop, board.sideToMove);
+        int startSquare;
+
+        while ((startSquare = Operations.PopLSB(ref bishopBitboard)) != -1)
+        {
+            ulong pinRay = Bitboards.FULL;
+            foreach (ulong ray in pinRays)
+            {
+                if (Operations.IsSet(ray, startSquare))
+                {
+                    pinRay = ray;
+                    break;
+                }
+            }
+
+            ulong allDestinations = Magics.Instance().GetBishopMoves(startSquare, board.GetFullBitboard());
+            allDestinations &= allowedDestinations & pinRay & ~board.GetSideBitboard(board.sideToMove);
+
+            moves.AddRange(CreateMoves(startSquare, allDestinations, board.GetSideBitboard(1 - board.sideToMove)));
+        }
+
+        return moves;
+    }
+
+    private static List<Move> GenerateRookMoves(Board board, ulong allowedDestinations, List<ulong> pinRays)
+    {
+        List<Move> moves = [];
+        ulong rookBitboard = board.GetBitboard(PieceType.Rook, board.sideToMove);
+        int startSquare;
+
+        while ((startSquare = Operations.PopLSB(ref rookBitboard)) != -1)
+        {
+            ulong pinRay = Bitboards.FULL;
+            foreach (ulong ray in pinRays)
+            {
+                if (Operations.IsSet(ray, startSquare))
+                {
+                    pinRay = ray;
+                    break;
+                }
+            }
+
+            ulong allDestinations = Magics.Instance().GetRookMoves(startSquare, board.GetFullBitboard());
+            allDestinations &= allowedDestinations & pinRay & ~board.GetSideBitboard(board.sideToMove);
+
+            moves.AddRange(CreateMoves(startSquare, allDestinations, board.GetSideBitboard(1 - board.sideToMove)));
+        }
+
+        return moves;
+    }
+
+    private static List<Move> GenerateQueenMoves(Board board, ulong allowedDestinations, List<ulong> pinRays)
+    {
+        List<Move> moves = [];
+        ulong queenBitboard = board.GetBitboard(PieceType.Queen, board.sideToMove);
+        int startSquare;
+
+        while ((startSquare = Operations.PopLSB(ref queenBitboard)) != -1)
+        {
+            ulong pinRay = Bitboards.FULL;
+            foreach (ulong ray in pinRays)
+            {
+                if (Operations.IsSet(ray, startSquare))
+                {
+                    pinRay = ray;
+                    break;
+                }
+            }
+
+            ulong allDestinations = Magics.Instance().GetQueenMoves(startSquare, board.GetFullBitboard());
+            allDestinations &= allowedDestinations & pinRay & ~board.GetSideBitboard(board.sideToMove);
+
+            moves.AddRange(CreateMoves(startSquare, allDestinations, board.GetSideBitboard(1 - board.sideToMove)));
+        }
 
         return moves;
     }
