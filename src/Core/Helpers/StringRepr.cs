@@ -11,6 +11,8 @@ namespace Core.Helpers
                 The conversion is based on the position of the square on the chessboard:
                 - 'a1' corresponds to 0
                 - 'h8' corresponds to 63
+
+                Returns -1 for no en passant available from fen reading
             */
             if (squareName == "-")
             {
@@ -56,7 +58,7 @@ namespace Core.Helpers
                 PieceType.Rook => 'R',
                 PieceType.Queen => 'Q',
                 PieceType.King => 'K',
-                PieceType.None => '\0',
+                PieceType.None => ' ',
                 _ => throw new ArgumentOutOfRangeException(nameof(pieceType), $"Invalid piece type {pieceType}")
             };
         }

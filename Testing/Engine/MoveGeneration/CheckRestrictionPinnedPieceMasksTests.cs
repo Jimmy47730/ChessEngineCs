@@ -3,7 +3,7 @@ using Core.Helpers;
 using Engine.MoveGeneration;
 using Xunit;
 
-namespace ChessEngine.Tests;
+namespace ChessEngine.Tests.Engine.MoveGeneration;
 
 public class CheckRestrictionPinnedPieceMasksTests
 {

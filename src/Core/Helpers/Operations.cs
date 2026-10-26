@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 
 namespace Core.Helpers;
@@ -38,6 +39,11 @@ public static class Operations
         return bitboard << n;
     }
 
+    public static ulong SquareToU64(int square)
+    {
+        return 1ul << square;
+    }
+
     // Returns index of least-significant set bit, or -1 if empty
     public static int LsbIndex(ulong bitboard)
     {
@@ -65,6 +71,48 @@ public static class Operations
             count++;
 
         return count;
+    }
+
+    public static bool IsSet(ulong bitboard, int square)
+    {
+        return (bitboard & SquareToU64(square)) != 0;
+    }
+
+    public static ulong GetRay(ulong from, ulong to)
+    {
+        // The arguments are expected to each contain exactly one square.
+        if (from == 0 || to == 0 || PopCount(from) != 1 || PopCount(to) != 1)
+            return 0ul;
+
+        int fromIndex = LsbIndex(from);
+        int toIndex = LsbIndex(to);
+        int fromRank = fromIndex / 8;
+        int fromFile = fromIndex % 8;
+        int toRank = toIndex / 8;
+        int toFile = toIndex % 8;
+        int rankDifference = toRank - fromRank;
+        int fileDifference = toFile - fromFile;
+
+        if (fromFile != toFile && fromRank != toRank && Math.Abs(rankDifference) != Math.Abs(fileDifference))
+            return 0ul;
+
+        
+
+        int rankStep = Math.Sign(rankDifference);
+        int fileStep = Math.Sign(fileDifference);
+        ulong ray = 0ul;
+        int rank = fromRank;
+        int file = fromFile;
+
+        while (true)
+        {
+            ray |= 1ul << (rank * 8 + file);
+            if (rank == toRank && file == toFile)
+                return ray;
+
+            rank += rankStep;
+            file += fileStep;
+        }
     }
 
     

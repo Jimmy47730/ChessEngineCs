@@ -75,8 +75,8 @@ public readonly struct Move
     public readonly int From() => (move >> 6) & 0x3F;
     public readonly int To() => move & 0x3F;
     public readonly int Flags() => (move >> 12) & 0x0F;
-    public readonly bool IsPromotion() => (Flags() & 0b1000) == 1;
-    public readonly bool IsCapture() => (Flags() & 0b0100) == 1;
+    public readonly bool IsPromotion() => (Flags() & 0b1000) != 0;
+    public readonly bool IsCapture() => (Flags() & 0b0100) != 0;
     public readonly bool IsDoublePawnPush() => Flags() == 0b0001;
     public readonly bool IsEnPassant() => Flags() == 0b0101;
     public readonly bool IsKingSideCastle() => Flags() == 0b0010;
@@ -97,4 +97,5 @@ public readonly struct Move
     }
 
     public readonly bool IsValid() => move != 0;
+    public static Move Null() => new(0, 0, 0);
 }

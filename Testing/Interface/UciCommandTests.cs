@@ -6,7 +6,7 @@ using Xunit;
 
 [assembly: CollectionBehavior(DisableTestParallelization = true)]
 
-namespace ChessEngine.Tests;
+namespace ChessEngine.Tests.Interface;
 
 public class UciCommandTests : IClassFixture<UciLoggingFixture>
 {

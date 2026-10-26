@@ -26,7 +26,9 @@ public readonly struct Board
     {
         ulong sideBitboard = 0;
 
-        for (int i = 6 * (int)color; i < 6 + (int)color; i++)
+        int firstPiece = 6 * (int)color;
+        int endPiece = firstPiece + 6;
+        for (int i = firstPiece; i < endPiece; i++)
         {
             sideBitboard |= bitboards[i];
         }

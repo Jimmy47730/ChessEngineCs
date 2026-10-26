@@ -1,7 +1,7 @@
 using Core.Helpers;
 using Xunit;
 
-namespace ChessEngine.Tests;
+namespace ChessEngine.Tests.Core.Helpers;
 
 public class OperationsTests
 {
@@ -84,5 +84,54 @@ public class OperationsTests
     public void PopCount_ReturnsTheNumberOfSetBits(ulong bitboard, int expected)
     {
         Assert.Equal(expected, Operations.PopCount(bitboard));
+    }
+
+    [Theory]
+    [InlineData(0b1010ul, 0, false)]
+    [InlineData(0b1010ul, 3, true)]
+    [InlineData(0x8000000000000000ul, 63, true)]
+    [InlineData(0x8000000000000000ul, 0, false)]
+    public void IsSet_ReportsWhetherTheSquareBitIsSet(ulong bitboard, int square, bool expected)
+    {
+        Assert.Equal(expected, Operations.IsSet(bitboard, square));
+    }
+
+    [Theory]
+    [InlineData(0, 7, 0x00000000000000FFul)]
+    [InlineData(8, 15, 0x000000000000FF00ul)]
+    [InlineData(15, 8, 0x000000000000FF00ul)]
+    [InlineData(0, 56, 0x0101010101010101ul)]
+    [InlineData(7, 63, 0x8080808080808080ul)]
+    [InlineData(63, 7, 0x8080808080808080ul)]
+    [InlineData(9, 57, 0x0202020202020200ul)]
+    [InlineData(0, 63, 0x8040201008040201ul)]
+    [InlineData(63, 0, 0x8040201008040201ul)]
+    [InlineData(27, 27, 1ul << 27)]
+    public void GetRay_ReturnsInclusiveRayForAlignedSquares(int fromSquare, int toSquare, ulong expected)
+    {
+        Assert.Equal(
+            expected,
+            Operations.GetRay(Operations.SquareToU64(fromSquare), Operations.SquareToU64(toSquare)));
+    }
+
+    [Theory]
+    [InlineData(0ul, 1ul)]
+    [InlineData(1ul, 0ul)]
+    [InlineData(3ul, 1ul)]
+    [InlineData(1ul, 3ul)]
+    public void GetRay_ReturnsEmptyForInputsThatAreNotSingleSquares(ulong from, ulong to)
+    {
+        Assert.Equal(0ul, Operations.GetRay(from, to));
+    }
+
+    [Theory]
+    [InlineData(0, 10)]
+    [InlineData(3, 20)]
+    [InlineData(6, 56)]
+    public void GetRay_ReturnsEmptyForUnalignedSquares(int fromSquare, int toSquare)
+    {
+        Assert.Equal(
+            0ul,
+            Operations.GetRay(Operations.SquareToU64(fromSquare), Operations.SquareToU64(toSquare)));
     }
 }
