@@ -1,4 +1,5 @@
 using System.Reflection;
+using Chess;
 using Core.DataStructures;
 using Core.Helpers;
 using Engine.MoveGeneration;
@@ -41,6 +42,23 @@ public class MoveGeneratorKingMovesTests
 
         Assert.DoesNotContain(moves, move => move.To() == Square("d1"));
         Assert.DoesNotContain(moves, move => move.To() == Square("f1"));
+    }
+
+    [Fact]
+    public void GenerateMoves_DoesNotAllowKingToMoveBehindCheckingRook()
+    {
+        var board = new Board("k3r1b1/1p1q2p1/B1p2p2/p6p/Pb1P1PnP/5Qn1/1P1B1N2/R2Kr3 w - - 0 35");
+
+        var moves = MoveGenerator.GenerateMoves(board);
+
+        foreach(var move in moves)
+        {
+            Logger.Debug(StringRepr.MoveToUci(move));
+        }
+
+        Assert.DoesNotContain(moves, move =>
+            move.From() == Square("d1") &&
+            move.To() == Square("c1"));
     }
 
     [Fact]

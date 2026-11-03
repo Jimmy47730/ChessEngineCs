@@ -38,11 +38,11 @@ public static class AttackCoverage
 
         return knightMoves;
     }
-    public static ulong BishopCoverage(Board board, bool opponent = true)
+    public static ulong BishopCoverage(Board board, bool opponent = true, ulong? occupiedOverride = null)
     {
         SideColor color = opponent ? 1 - board.sideToMove : board.sideToMove;
         ulong bitboard = board.GetBitboard(PieceType.Bishop, color);
-        ulong occupied = board.GetFullBitboard();
+        ulong occupied = occupiedOverride ?? board.GetFullBitboard();
         int startSquare;
         ulong bishopMoves = 0;
 
@@ -53,11 +53,11 @@ public static class AttackCoverage
 
         return bishopMoves;
     }
-    public static ulong RookCoverage(Board board, bool opponent = true)
+    public static ulong RookCoverage(Board board, bool opponent = true, ulong? occupiedOverride = null)
     {
         SideColor color = opponent ? 1 - board.sideToMove : board.sideToMove;
         ulong bitboard = board.GetBitboard(PieceType.Rook, color);
-        ulong occupied = board.GetFullBitboard();
+        ulong occupied = occupiedOverride ?? board.GetFullBitboard();
         int startSquare;
         ulong rookMoves = 0;
 
@@ -68,11 +68,11 @@ public static class AttackCoverage
 
         return rookMoves;
     }
-    public static ulong QueenCoverage(Board board, bool opponent = true)
+    public static ulong QueenCoverage(Board board, bool opponent = true, ulong? occupiedOverride = null)
     {
         SideColor color = opponent ? 1 - board.sideToMove : board.sideToMove;
         ulong bitboard = board.GetBitboard(PieceType.Queen, color);
-        ulong occupied = board.GetFullBitboard();
+        ulong occupied = occupiedOverride ?? board.GetFullBitboard();
         int startSquare;
         ulong queenMoves = 0;
 
@@ -99,13 +99,13 @@ public static class AttackCoverage
     }
 
     // This method returns the bitboard of all squares controlled by one side, aka where the opposite king can't move
-    public static ulong GetFullCoverage(Board board, bool opponent = true)
+    public static ulong GetFullCoverage(Board board, bool opponent = true, ulong? occupiedOverride = null)
     {
         return PawnCoverage(board, opponent)
              | KnightCoverage(board, opponent)
-             | BishopCoverage(board, opponent)
-             | RookCoverage(board, opponent)
-             | QueenCoverage(board, opponent)
+             | BishopCoverage(board, opponent, occupiedOverride)
+             | RookCoverage(board, opponent, occupiedOverride)
+             | QueenCoverage(board, opponent, occupiedOverride)
              | KingCoverage(board, opponent);
     }
 }

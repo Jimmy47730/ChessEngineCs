@@ -25,8 +25,8 @@ public class MoveGenerator
             // If there is no ray between, only moves are captures (knight checks)
             if (allowedDestinations == 0) allowedDestinations = checkingPieces;
         }
-
-        moves.AddRange(GenerateKingMoves(board, false));
+        else
+            moves.AddRange(GenerateKingMoves(board, false));
 
         // Other pieces' move generation
         List<ulong> pinMasks = CheckRestriction.GetPinnedPieceMasks(board);
@@ -47,7 +47,11 @@ public class MoveGenerator
         if (kingSquare == -1)
             return moves;
 
-        ulong opponentCoverage = AttackCoverage.GetFullCoverage(board);
+        ulong kingBitboard = board.GetBitboard(PieceType.King, board.sideToMove);
+        ulong occupiedWithoutKing = board.GetFullBitboard() & ~kingBitboard;
+        ulong opponentCoverage = AttackCoverage.GetFullCoverage(
+            board,
+            occupiedOverride: occupiedWithoutKing);
         ulong toSquares = Magics.Instance().GetKingMoves(kingSquare);
 
         // Regular moves

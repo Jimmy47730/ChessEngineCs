@@ -73,6 +73,12 @@ public class UCI
             player.Think(moveTime);
             return;
         }
+        if (message.Contains("infinite"))
+        {
+            Logger.Info("Requested infinite search");
+            player.Think(int.MaxValue);
+            return;
+        }
 
         if (!message.Contains("wtime") || !message.Contains("btime"))
         {
