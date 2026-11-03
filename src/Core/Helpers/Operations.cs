@@ -56,6 +56,11 @@ public static class Operations
         return bitboard & ~(1ul << bit);
     }
 
+    public static ulong SetBit(ulong bitboard, int bit)
+    {
+        return bitboard | (1ul << bit);
+    }
+
     public static int PopLSB(ref ulong bitboard)
     {
         int lsbIndex = LsbIndex(bitboard);

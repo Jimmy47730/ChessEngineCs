@@ -61,9 +61,9 @@ namespace Core.Helpers
             if (castlingRights[2]) hash ^= CastlingRandoms[2];
             if (castlingRights[3]) hash ^= CastlingRandoms[3];
 
-            // En passant square, such as e3.
-            if (enPassantSquare >= 0 && enPassantSquare < EnPassantFiles)
-                hash ^= EnPassantRandoms[enPassantSquare];
+            // En passant squares share a hash key by file.
+            if (enPassantSquare >= 0 && enPassantSquare < BoardSquares)
+                hash ^= EnPassantRandoms[enPassantSquare % EnPassantFiles];
 
             // Side to move
             if (sideToMove == SideColor.Black)

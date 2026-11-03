@@ -64,7 +64,7 @@ public class MoveGenerator
             board.GetFullBitboard(),
             board.GetBitboard(PieceType.Rook, board.sideToMove),
             opponentCoverage,
-            board.castlingRights
+            board.GetCastlingRights()
         ));
 
         return moves;
@@ -97,7 +97,7 @@ public class MoveGenerator
             if ((endBitboard & board.GetSideBitboard(oppColor)) != 0 && (endBitboard & allowedDestinations & pinRay) != 0)
             {
                 if ((endBitboard & (Bitboards.RANK_1 | Bitboards.RANK_8)) != 0)
-                    moves.AddRange(CreatePromotionMoves(startSquare, endSquare));
+                    moves.AddRange(CreatePromotionMoves(startSquare, endSquare, isCapture: true));
                 else
                     moves.Add(new(startSquare, endSquare, Move.GenerateSpecialMoveFlag(CaptureType.Normal)));
             }
@@ -108,7 +108,7 @@ public class MoveGenerator
             if ((endBitboard & board.GetSideBitboard(oppColor)) != 0 && (endBitboard & allowedDestinations & pinRay) != 0)
             {
                 if ((endBitboard & (Bitboards.RANK_1 | Bitboards.RANK_8)) != 0)
-                    moves.AddRange(CreatePromotionMoves(startSquare, endSquare));
+                    moves.AddRange(CreatePromotionMoves(startSquare, endSquare, isCapture: true));
                 else
                     moves.Add(new(startSquare, endSquare, Move.GenerateSpecialMoveFlag(CaptureType.Normal)));
             }
@@ -119,7 +119,7 @@ public class MoveGenerator
             if ((endBitboard & board.GetFullBitboard()) == 0 && (endBitboard & allowedDestinations & pinRay) != 0)
             {
                 if ((endBitboard & (Bitboards.RANK_1 | Bitboards.RANK_8)) != 0)
-                    moves.AddRange(CreatePromotionMoves(startSquare, endSquare));
+                    moves.AddRange(CreatePromotionMoves(startSquare, endSquare, isCapture: false));
                 else
                     moves.Add(new(startSquare, endSquare));
             }
@@ -333,12 +333,12 @@ public class MoveGenerator
         return moves;
     }
 
-    private static List<Move> CreatePromotionMoves(int from, int to)
+    private static List<Move> CreatePromotionMoves(int from, int to, bool isCapture)
     {
         List<Move> moves = [];
                 
         for (int i = 1; i <= 4; i++)
-            moves.Add(new(from, to, Move.GeneratePromotionFlag((PieceType)i, true)));
+            moves.Add(new(from, to, Move.GeneratePromotionFlag((PieceType)i, isCapture)));
 
         return moves;
     }

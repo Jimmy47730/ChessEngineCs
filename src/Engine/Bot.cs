@@ -7,7 +7,7 @@ namespace Engine;
 public class Bot
 {
     public bool IsThinking { get; private set; }
-    private Board currentBoard;
+    private Board currentBoard = new();
     public Action<string>? OnMoveChosen;
 
     // Bot implementation
@@ -37,12 +37,36 @@ public class Bot
 
     public void ApplyMove(Move move)
     {
-        throw new NotImplementedException();
+        List<Move> legalMoves = MoveGenerator.GenerateMoves(currentBoard);
+        foreach (Move legalMove in legalMoves)
+        {
+            if (legalMove.From() == move.From() &&
+                legalMove.To() == move.To() &&
+                legalMove.Flags() == move.Flags())
+            {
+                currentBoard.ApplyMove(legalMove);
+                return;
+            }
+        }
+
+        throw new ArgumentException("The move is not legal in the current position.", nameof(move));
     }
 
     public void ApplyMove(string moveUci)
     {
-        throw new NotImplementedException();
+        ArgumentException.ThrowIfNullOrWhiteSpace(moveUci);
+
+        List<Move> legalMoves = MoveGenerator.GenerateMoves(currentBoard);
+        foreach (Move legalMove in legalMoves)
+        {
+            if (string.Equals(StringRepr.MoveToUci(legalMove), moveUci, StringComparison.OrdinalIgnoreCase))
+            {
+                currentBoard.ApplyMove(legalMove);
+                return;
+            }
+        }
+
+        throw new ArgumentException($"The move '{moveUci}' is not legal in the current position.", nameof(moveUci));
     }
 
     public void StopThinking()

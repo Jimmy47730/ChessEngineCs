@@ -96,7 +96,7 @@ namespace Core.Helpers
                 {
                     int fileIndex = blackAtTop ? x : 7 - x;
                     int square = Operations.SquareIndex(rankIndex, fileIndex);
-                    char piece = board.squares[square];
+                    char piece = board.GetPieceAt(square);
                     if (piece == '\0') piece = ' ';
                     result.Append($"| {piece} ");
 
@@ -134,7 +134,10 @@ namespace Core.Helpers
         {
             string fromSquare = SquareConversion(move.From());
             string toSquare = SquareConversion(move.To());
-            char promotedPiece = char.ToLower(PieceConversion(move.PromotionPieceType()));
+            if (!move.IsPromotion())
+                return $"{fromSquare}{toSquare}";
+
+            char promotedPiece = char.ToLowerInvariant(PieceConversion(move.PromotionPieceType()));
 
             return $"{fromSquare}{toSquare}{promotedPiece}";
         }
@@ -148,7 +151,7 @@ namespace Core.Helpers
                 for (int file = 0; file < 8; file++)
                 {
                     int squareIndex = Operations.SquareIndex(rank, file);
-                    char piece = board.squares[squareIndex];
+                    char piece = board.GetPieceAt(squareIndex);
                     if (piece == '\0')
                     {
                         emptyCount++;
@@ -174,10 +177,10 @@ namespace Core.Helpers
             fen += board.sideToMove == SideColor.White ? " w " : " b ";
 
             string castlingRights = "";
-            if (board.castlingRights[(int)CastlingRightsIndex.WhiteKingSide]) castlingRights += "K";
-            if (board.castlingRights[(int)CastlingRightsIndex.WhiteQueenSide]) castlingRights += "Q";
-            if (board.castlingRights[(int)CastlingRightsIndex.BlackKingSide]) castlingRights += "k";
-            if (board.castlingRights[(int)CastlingRightsIndex.BlackQueenSide]) castlingRights += "q";
+            if (board.HasCastlingRight(CastlingRightsIndex.WhiteKingSide)) castlingRights += "K";
+            if (board.HasCastlingRight(CastlingRightsIndex.WhiteQueenSide)) castlingRights += "Q";
+            if (board.HasCastlingRight(CastlingRightsIndex.BlackKingSide)) castlingRights += "k";
+            if (board.HasCastlingRight(CastlingRightsIndex.BlackQueenSide)) castlingRights += "q";
             fen += string.IsNullOrEmpty(castlingRights) ? "- " : castlingRights + " ";
 
             fen += board.enPassantSquare == -1 ? "- " : $"{SquareConversion(board.enPassantSquare)} ";

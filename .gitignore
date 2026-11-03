@@ -8,3 +8,4 @@ ChessEngine.Tests/logs
 /Testing/bin
 /Testing/obj
 /Testing/logs
+GlobalSuppressions.cs
