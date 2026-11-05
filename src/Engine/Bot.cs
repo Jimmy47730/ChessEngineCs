@@ -1,13 +1,18 @@
 using Chess;
 using Core.Helpers;
 using Core.DataStructures;
+using Engine.Evaluation;
 using Engine.MoveGeneration;
 namespace Engine;
 
 public class Bot
 {
+    private const int MateScore = 1_000_000;
+    private const int SearchInfinity = 1_100_000;
+    private const int SearchDepth = 5;
+
     public bool IsThinking { get; private set; }
-    private Board currentBoard = new();
+    public Board currentBoard = new();
     public Action<string>? OnMoveChosen;
 
     // Bot implementation
@@ -84,28 +89,22 @@ public class Bot
     public void Think(int time)
     {
         IsThinking = true;
-        List<Move> legalMoves = MoveGenerator.GenerateMoves(currentBoard);
-        Logger.Debug($"Generated {legalMoves.Count} legal moves.");
-        if (legalMoves.Count == 0)
+        try
         {
-            Logger.Warn("No legal moves available.");
-            OnMoveChosen?.Invoke("0000");
-            IsThinking = false;
-            return;
-        }
-        Random rng = new();
-        Move bestMove = legalMoves[rng.Next(legalMoves.Count)];
+            Move bestMove = Search(SearchDepth);
+            if (!bestMove.IsValid())
+            {
+                Logger.Warn("No legal moves available.");
+                OnMoveChosen?.Invoke("0000");
+                return;
+            }
 
-        
-        Logger.Debug("All legal moves: ");
-        foreach (var move in legalMoves)
-        {
-            Logger.Debug($"{move} ({StringRepr.MoveToUci(move)})");
+            OnSearchComplete(bestMove);
         }
-        
-        Logger.Debug($"Legal moves found: {legalMoves.Count}");
-        OnSearchComplete(bestMove);
-        IsThinking = false;
+        finally
+        {
+            IsThinking = false;
+        }
     }
 
     private void OnSearchComplete(Move bestMove)
@@ -113,5 +112,77 @@ public class Bot
         string bestMoveUci = StringRepr.MoveToUci(bestMove);
         Logger.Info($"Chosen move: {bestMove} ({bestMoveUci})");
         OnMoveChosen?.Invoke(bestMoveUci);
+    }
+
+    private Move Search(int depthTarget)
+    {
+        if (depthTarget < 1)
+            throw new ArgumentOutOfRangeException(nameof(depthTarget), "Search depth must be at least one.");
+
+        List<Move> legalMoves = MoveGenerator.GenerateMoves(currentBoard);
+        Logger.Debug($"Generated {legalMoves.Count} legal moves.");
+        if (legalMoves.Count == 0)
+            return Move.Null();
+
+        Move bestMove = legalMoves[0];
+        int bestScore = -SearchInfinity;
+        int alpha = -SearchInfinity;
+
+        foreach (Move move in legalMoves)
+        {
+            UndoInfo undoInfo = currentBoard.ApplyMove(move);
+            int score;
+            try
+            {
+                score = -MiniMax(depthTarget - 1, -SearchInfinity, -alpha, 1);
+            }
+            finally
+            {
+                currentBoard.UndoMove(move, undoInfo);
+            }
+
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestMove = move;
+            }
+
+            alpha = Math.Max(alpha, score);
+        }
+
+        Logger.Debug($"Search depth {depthTarget} selected {StringRepr.MoveToUci(bestMove)} with score {bestScore}.");
+        return bestMove;
+    }
+
+    private int MiniMax(int depth, int alpha, int beta, int ply)
+    {
+        List<Move> legalMoves = MoveGenerator.GenerateMoves(currentBoard);
+        if (legalMoves.Count == 0)
+            return CheckRestriction.GetCheckingPieces(currentBoard) != 0 ? -MateScore + ply : 0;
+
+        if (depth == 0)
+            return Evaluator.EvaluatePosition(currentBoard);
+
+        int bestScore = -SearchInfinity;
+        foreach (Move move in legalMoves)
+        {
+            UndoInfo undoInfo = currentBoard.ApplyMove(move);
+            int score;
+            try
+            {
+                score = -MiniMax(depth - 1, -beta, -alpha, ply + 1);
+            }
+            finally
+            {
+                currentBoard.UndoMove(move, undoInfo);
+            }
+
+            bestScore = Math.Max(bestScore, score);
+            alpha = Math.Max(alpha, score);
+            if (alpha >= beta)
+                break;
+        }
+
+        return bestScore;
     }
 }

@@ -1,6 +1,7 @@
 using Core.DataStructures;
 using Core.Helpers;
 using Engine;
+using Engine.MoveGeneration;
 using Xunit;
 
 namespace ChessEngine.Tests.Engine;
@@ -40,5 +41,23 @@ public class BotApplyMoveTests
         var bot = new Bot();
 
         Assert.Throws<ArgumentException>(() => bot.ApplyMove("e2e5"));
+    }
+
+    [Fact]
+    public void Think_SelectsLegalMoveAndRestoresPosition()
+    {
+        var bot = new Bot();
+        string originalPosition = bot.GetBoardDiagram();
+        string? selectedMove = null;
+        bot.OnMoveChosen = move => selectedMove = move;
+
+        bot.Think(0);
+
+        Assert.NotNull(selectedMove);
+        Assert.Contains(
+            MoveGenerator.GenerateMoves(new Board()),
+            move => StringRepr.MoveToUci(move) == selectedMove);
+        Assert.Equal(originalPosition, bot.GetBoardDiagram());
+        Assert.False(bot.IsThinking);
     }
 }

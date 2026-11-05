@@ -1,5 +1,7 @@
 using Engine;
 using Core.Helpers;
+using Core.DataStructures;
+using Engine.MoveGeneration;
 namespace Chess;
 
 public class UCI
@@ -7,7 +9,7 @@ public class UCI
     private readonly Bot player;
 
 	static readonly string[] positionLabels = ["fen", "moves"];
-	static readonly string[] goLabels = ["movetime", "wtime", "btime", "winc", "binc", "movestogo"];
+	static readonly string[] goLabels = ["perft", "movetime", "wtime", "btime", "winc", "binc", "movestogo"];
 
     public UCI()
     {
@@ -56,14 +58,33 @@ public class UCI
         }
     }
 
-    public static void OnMoveChosen(string bestMove)
+    public void OnMoveChosen(string bestMove)
     {
         Respond($"bestmove {bestMove}");
+        Logger.Debug("Legal moves found:");
+        foreach (Move move in MoveGenerator.GenerateMoves(player.currentBoard))
+        {
+            Logger.Debug(StringRepr.MoveToUci(move));
+        }
     }
 
     private void ProcessGoCommand(string message)
     {
         message = message.Trim();
+        string[] commandParts = message.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        if (commandParts.Length > 1 && string.Equals(commandParts[1], "perft", StringComparison.OrdinalIgnoreCase))
+        {
+            if (commandParts.Length != 3)
+                throw new FormatException("The 'go perft' command requires exactly one depth argument.");
+
+            int depth = int.Parse(commandParts[2]);
+            if (depth < 1)
+                throw new ArgumentOutOfRangeException(nameof(depth), "Perft depth must be at least 1.");
+
+            RunPerftDivide(depth);
+            return;
+        }
 
         // Checks for a defined thinking time
         if (message.Contains("movetime"))
@@ -101,6 +122,51 @@ public class UCI
         int time = Bot.DefineThinkingTime(whiteTime, blackTime, whiteInc, blackInc);
         Logger.Info($"Allocated thinking time: {time} ms");
         player.Think(time);
+    }
+
+    private void RunPerftDivide(int depth)
+    {
+        long totalNodes = 0;
+        foreach (Move move in MoveGenerator.GenerateMoves(player.currentBoard))
+        {
+            UndoInfo undoInfo = player.currentBoard.ApplyMove(move);
+            long nodes;
+            try
+            {
+                nodes = CountPositions(player.currentBoard, depth - 1);
+            }
+            finally
+            {
+                player.currentBoard.UndoMove(move, undoInfo);
+            }
+
+            totalNodes += nodes;
+            Respond($"{StringRepr.MoveToUci(move)}: {nodes}");
+        }
+
+        Respond($"info string Nodes searched: {totalNodes}");
+    }
+
+    private static long CountPositions(Board board, int depth)
+    {
+        if (depth == 0)
+            return 1;
+
+        long positions = 0;
+        foreach (Move move in MoveGenerator.GenerateMoves(board))
+        {
+            UndoInfo undoInfo = board.ApplyMove(move);
+            try
+            {
+                positions += CountPositions(board, depth - 1);
+            }
+            finally
+            {
+                board.UndoMove(move, undoInfo);
+            }
+        }
+
+        return positions;
     }
 
     private void ProcessPositionCommand(string message)

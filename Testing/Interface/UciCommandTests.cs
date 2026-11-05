@@ -136,6 +136,29 @@ public class UciCommandTests : IClassFixture<UciLoggingFixture>
     }
 
     [Fact]
+    public void GoPerftCommand_ReportsRootMoveCountsAndTotalWithoutChangingPosition()
+    {
+        var uci = new UCI();
+        uci.ReceiveCommand("position startpos");
+        string positionBefore = CaptureOutput(() => uci.ReceiveCommand("d"));
+
+        string output = CaptureOutput(() => uci.ReceiveCommand("go perft 2"));
+
+        Assert.Contains("info string e2e4: 20" + Environment.NewLine, output);
+        Assert.EndsWith("info string Nodes searched: 400" + Environment.NewLine, output);
+        Assert.Equal(21, output.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).Length);
+        Assert.Equal(positionBefore, CaptureOutput(() => uci.ReceiveCommand("d")));
+    }
+
+    [Fact]
+    public void GoPerftCommand_RejectsZeroDepth()
+    {
+        var uci = new UCI();
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => uci.ReceiveCommand("go perft 0"));
+    }
+
+    [Fact]
     public void GoWithInvalidMovetimePropagatesFormatError()
     {
         var uci = new UCI();
@@ -196,12 +219,6 @@ public class UciCommandTests : IClassFixture<UciLoggingFixture>
 
         Assert.Empty(CaptureOutput(() => uci.ReceiveCommand("unknown")));
         Assert.Empty(CaptureOutput(() => uci.ReceiveCommand("")));
-    }
-
-    [Fact]
-    public void OnMoveChosenWritesBestmoveResponse()
-    {
-        Assert.Equal("bestmove e2e4" + Environment.NewLine, CaptureOutput(() => UCI.OnMoveChosen("e2e4")));
     }
 
     private static string CaptureOutput(Action action)

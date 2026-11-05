@@ -1,4 +1,3 @@
-using System.Net.NetworkInformation;
 using Core.DataStructures;
 using Core.Helpers;
 
@@ -146,6 +145,9 @@ public class MoveGenerator
             
             endSquare = board.enPassantSquare;
             endBitboard = Operations.SquareToU64(endSquare);
+            if ((endBitboard & board.GetFullBitboard()) != 0)
+                continue;
+
             // The captured pawn sits on the square behind the target square, hence the swapped number shifts below
             ulong capturedPawn = 
                 color == SideColor.White ?
@@ -155,54 +157,34 @@ public class MoveGenerator
             if ((capturedPawn & board.GetBitboard(PieceType.Pawn, oppColor)) == 0)
                 continue;
             
-            bool isNeighbour = 
-                Operations.ShiftByInt(startBitboard, shifts[0]) == endBitboard ||
-                Operations.ShiftByInt(startBitboard, shifts[2]) == endBitboard;
-            if (isNeighbour && (endBitboard & allowedDestinations & pinRay) != 0)
+            int squareDelta = endSquare - startSquare;
+            bool isNeighbour =
+                (squareDelta == shifts[0] || squareDelta == shifts[2]) &&
+                Math.Abs(startSquare % 8 - endSquare % 8) == 1;
+            
+            // This logic is temporary and could very well be replaced by something faster, but I can't be bothered rn
+            if (isNeighbour)
             {
-                int kingSquare = Operations.LsbIndex(board.GetBitboard(PieceType.King, color));
-                if (kingSquare / 8 == startSquare / 8)
+                Move enPassantMove = new(
+                    startSquare,
+                    endSquare,
+                    Move.GenerateSpecialMoveFlag(CaptureType.EnPassant)
+                );
+                UndoInfo undoInfo = board.ApplyMove(enPassantMove);
+                bool leavesKingInCheck;
+                try
                 {
-                    int direction = kingSquare < startSquare ? 1 : -1;
-                    ulong involvedPawns = startBitboard | capturedPawn;
-                    ulong opponentRookOrQueen =
-                        board.GetBitboard(PieceType.Rook, oppColor) |
-                        board.GetBitboard(PieceType.Queen, oppColor);
-
-                    for (int square = kingSquare + direction;
-                         square >= 0 && square < 64 && square / 8 == kingSquare / 8;
-                         square += direction)
-                    {
-                        ulong squareBitboard = Operations.SquareToU64(square);
-                        if ((squareBitboard & involvedPawns) != 0 ||
-                            (squareBitboard & board.GetFullBitboard()) == 0)
-                            continue;
-
-                        if ((squareBitboard & opponentRookOrQueen) != 0)
-                            continue;
-
-                        break;
-                    }
-
-                    // The loop's continue above skips the move only when the first blocker is a rook or queen.
-                    bool enPassantExposesKing = false;
-                    for (int square = kingSquare + direction;
-                         square >= 0 && square < 64 && square / 8 == kingSquare / 8;
-                         square += direction)
-                    {
-                        ulong squareBitboard = Operations.SquareToU64(square);
-                        if ((squareBitboard & involvedPawns) != 0 ||
-                            (squareBitboard & board.GetFullBitboard()) == 0)
-                            continue;
-
-                        enPassantExposesKing = (squareBitboard & opponentRookOrQueen) != 0;
-                        break;
-                    }
-
-                    if (enPassantExposesKing)
-                        continue;
+                    ulong kingBitboard = board.GetBitboard(PieceType.King, color);
+                    ulong opponentCoverage = AttackCoverage.GetFullCoverage(board, opponent: false);
+                    leavesKingInCheck = (kingBitboard & opponentCoverage) != 0;
                 }
-                moves.Add(new(startSquare, endSquare, Move.GenerateSpecialMoveFlag(CaptureType.EnPassant)));   
+                finally
+                {
+                    board.UndoMove(enPassantMove, undoInfo);
+                }
+
+                if (!leavesKingInCheck)
+                    moves.Add(enPassantMove);
             }
         }
 
@@ -227,7 +209,7 @@ public class MoveGenerator
                 }
             }
             if (isPinned) // Pinned knights can't move in any direction
-                break;
+                continue;
             
             ulong allDestinations = Magics.Instance().GetKnightMoves(startSquare);
             allDestinations &= allowedDestinations & ~board.GetSideBitboard(board.sideToMove);
