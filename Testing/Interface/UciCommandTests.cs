@@ -144,8 +144,8 @@ public class UciCommandTests : IClassFixture<UciLoggingFixture>
 
         string output = CaptureOutput(() => uci.ReceiveCommand("go perft 2"));
 
-        Assert.Contains("info string e2e4: 20" + Environment.NewLine, output);
-        Assert.EndsWith("info string Nodes searched: 400" + Environment.NewLine, output);
+        Assert.Contains("e2e4: 20" + Environment.NewLine, output);
+        Assert.EndsWith("Nodes searched: 400" + Environment.NewLine, output);
         Assert.Equal(21, output.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).Length);
         Assert.Equal(positionBefore, CaptureOutput(() => uci.ReceiveCommand("d")));
     }
