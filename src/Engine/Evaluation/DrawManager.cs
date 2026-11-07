@@ -6,6 +6,8 @@ namespace Engine.Evaluation;
 
 public class DrawManager
 {
+
+    // Threefold repetition section
     private readonly List<ulong> positions = [];
     private readonly Stack<int> previousRepetitionStartIndices = [];
     private int repetitionStartIndex;
@@ -55,8 +57,15 @@ public class DrawManager
         return false;
     }
 
+    // Other draws section
     public static bool IsDrawBy50MoveRule(Board board)
     {
         return board.halfmoveClock >= 100;
+    }
+
+    public static bool IsDrawByInsufficientMaterial(Board board)
+    {
+        // TODO: Recognize every endgame drawn by insufficient material
+        throw new NotImplementedException();
     }
 }
