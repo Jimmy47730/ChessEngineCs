@@ -58,14 +58,9 @@ public class UCI
         }
     }
 
-    public void OnMoveChosen(string bestMove)
+    public static void OnMoveChosen(string bestMove)
     {
         Respond($"bestmove {bestMove}");
-        Logger.Debug("Legal moves found:");
-        foreach (Move move in MoveGenerator.GenerateMoves(player.currentBoard))
-        {
-            Logger.Debug(StringRepr.MoveToUci(move));
-        }
     }
 
     private void ProcessGoCommand(string message)

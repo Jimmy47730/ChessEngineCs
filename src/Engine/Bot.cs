@@ -14,12 +14,19 @@ public class Bot
     public bool IsThinking { get; private set; }
     public Board currentBoard = new();
     public Action<string>? OnMoveChosen;
+    private readonly DrawManager drawManager = new();
+
+    public Bot()
+    {
+        drawManager.ResetPositions(currentBoard.zobristHash);
+    }
 
     // Bot implementation
 
     public void NotifyNewGame()
     {
         currentBoard = new Board();
+        drawManager.ResetPositions(currentBoard.zobristHash);
     }
 
     public void SetPosition(string fen = "")
@@ -28,6 +35,7 @@ public class Bot
             currentBoard = new Board();
         else
             currentBoard = new Board(fen);
+        drawManager.ResetPositions(currentBoard.zobristHash);
     }
 
     public string GetBoardDiagram()
@@ -42,6 +50,7 @@ public class Bot
 
     public void ApplyMove(Move move)
     {
+        EnsureDrawHistoryMatchesBoard();
         List<Move> legalMoves = MoveGenerator.GenerateMoves(currentBoard);
         foreach (Move legalMove in legalMoves)
         {
@@ -49,7 +58,7 @@ public class Bot
                 legalMove.To() == move.To() &&
                 legalMove.Flags() == move.Flags())
             {
-                currentBoard.ApplyMove(legalMove);
+                ApplyTrackedMove(legalMove);
                 return;
             }
         }
@@ -61,12 +70,13 @@ public class Bot
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(moveUci);
 
+        EnsureDrawHistoryMatchesBoard();
         List<Move> legalMoves = MoveGenerator.GenerateMoves(currentBoard);
         foreach (Move legalMove in legalMoves)
         {
             if (string.Equals(StringRepr.MoveToUci(legalMove), moveUci, StringComparison.OrdinalIgnoreCase))
             {
-                currentBoard.ApplyMove(legalMove);
+                ApplyTrackedMove(legalMove);
                 return;
             }
         }
@@ -88,6 +98,7 @@ public class Bot
 
     public void Think(int time)
     {
+        EnsureDrawHistoryMatchesBoard();
         IsThinking = true;
         try
         {
@@ -130,7 +141,7 @@ public class Bot
 
         foreach (Move move in legalMoves)
         {
-            UndoInfo undoInfo = currentBoard.ApplyMove(move);
+            UndoInfo undoInfo = ApplyTrackedMove(move);
             int score;
             try
             {
@@ -138,7 +149,7 @@ public class Bot
             }
             finally
             {
-                currentBoard.UndoMove(move, undoInfo);
+                UndoTrackedMove(move, undoInfo);
             }
 
             if (score > bestScore)
@@ -156,6 +167,9 @@ public class Bot
 
     private int MiniMax(int depth, int alpha, int beta, int ply)
     {
+        if (drawManager.IsThreefoldRepetition() || DrawManager.IsDrawBy50MoveRule(currentBoard))
+            return 0;
+
         List<Move> legalMoves = MoveGenerator.GenerateMoves(currentBoard);
         if (legalMoves.Count == 0)
             return CheckRestriction.GetCheckingPieces(currentBoard) != 0 ? -MateScore + ply : 0;
@@ -166,7 +180,7 @@ public class Bot
         int bestScore = -SearchInfinity;
         foreach (Move move in legalMoves)
         {
-            UndoInfo undoInfo = currentBoard.ApplyMove(move);
+            UndoInfo undoInfo = ApplyTrackedMove(move);
             int score;
             try
             {
@@ -174,7 +188,7 @@ public class Bot
             }
             finally
             {
-                currentBoard.UndoMove(move, undoInfo);
+                UndoTrackedMove(move, undoInfo);
             }
 
             bestScore = Math.Max(bestScore, score);
@@ -184,5 +198,40 @@ public class Bot
         }
 
         return bestScore;
+    }
+
+    private void EnsureDrawHistoryMatchesBoard()
+    {
+        if (drawManager.CurrentPositionHash != currentBoard.zobristHash)
+            drawManager.ResetPositions(currentBoard.zobristHash);
+    }
+
+    private UndoInfo ApplyTrackedMove(Move move)
+    {
+        char movedPiece = currentBoard.GetPieceAt(move.From());
+        bool[] previousCastlingRights = currentBoard.GetCastlingRights();
+        UndoInfo undoInfo = currentBoard.ApplyMove(move);
+        bool lostCastlingRights = false;
+        bool[] currentCastlingRights = currentBoard.GetCastlingRights();
+        for (int i = 0; i < previousCastlingRights.Length; i++)
+        {
+            if (previousCastlingRights[i] && !currentCastlingRights[i])
+            {
+                lostCastlingRights = true;
+                break;
+            }
+        }
+
+        bool isIrreversible = char.ToUpperInvariant(movedPiece) == 'P' ||
+            move.IsCapture() ||
+            lostCastlingRights;
+        drawManager.PushPosition(currentBoard.zobristHash, isIrreversible);
+        return undoInfo;
+    }
+
+    private void UndoTrackedMove(Move move, UndoInfo undoInfo)
+    {
+        drawManager.PopPosition();
+        currentBoard.UndoMove(move, undoInfo);
     }
 }

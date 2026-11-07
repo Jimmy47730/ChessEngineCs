@@ -2,7 +2,7 @@ using Core.Helpers;
 
 namespace Core.DataStructures;
 
-public readonly struct Move
+public readonly struct Move(int from, int to, int flags = 0)
 {
     /*
         From-to based 16-bit move representation.
@@ -18,12 +18,7 @@ public readonly struct Move
         See further explanation at https://chessprogramming.org/Encoding_Moves#from-to-based
     */
 
-    private readonly ushort move;
-
-    public Move(int from, int to, int flags = 0)
-    {
-        move = (ushort)((to & 0x3F) | ((from & 0x3F) << 6) | ((flags & 0x0F) << 12));
-    }
+    private readonly ushort move = (ushort)((to & 0x3F) | ((from & 0x3F) << 6) | ((flags & 0x0F) << 12));
 
     // Methods to generate the special move flags based on the move type
 
