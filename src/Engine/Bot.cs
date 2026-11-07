@@ -102,15 +102,15 @@ public class Bot
         IsThinking = true;
         try
         {
-            Move bestMove = Search(SearchDepth);
-            if (!bestMove.IsValid())
+            SearchResult searchResult = Search(SearchDepth);
+            if (!searchResult.BestMove.IsValid())
             {
                 Logger.Warn("No legal moves available.");
                 OnMoveChosen?.Invoke("0000");
                 return;
             }
 
-            OnSearchComplete(bestMove);
+            OnSearchComplete(searchResult);
         }
         finally
         {
@@ -118,14 +118,17 @@ public class Bot
         }
     }
 
-    private void OnSearchComplete(Move bestMove)
+    private void OnSearchComplete(SearchResult searchResult)
     {
-        string bestMoveUci = StringRepr.MoveToUci(bestMove);
-        Logger.Info($"Chosen move: {bestMove} ({bestMoveUci})");
+        string bestMoveUci = StringRepr.MoveToUci(searchResult.BestMove);
+        string bestLine = string.Join(" ", searchResult.BestLine.Select(StringRepr.MoveToUci));
+        Logger.Info($"Chosen move: {searchResult.BestMove} ({bestMoveUci})");
+        Logger.Info($"Best line found: {bestLine}");
+        Logger.Info($"Current evaluation: {searchResult.Evaluation}");
         OnMoveChosen?.Invoke(bestMoveUci);
     }
 
-    private Move Search(int depthTarget)
+    private SearchResult Search(int depthTarget)
     {
         if (depthTarget < 1)
             throw new ArgumentOutOfRangeException(nameof(depthTarget), "Search depth must be at least one.");
@@ -133,72 +136,87 @@ public class Bot
         List<Move> legalMoves = MoveGenerator.GenerateMoves(currentBoard);
         Logger.Debug($"Generated {legalMoves.Count} legal moves.");
         if (legalMoves.Count == 0)
-            return Move.Null();
+            return new SearchResult(Move.Null(), 0, []);
 
         Move bestMove = legalMoves[0];
         int bestScore = -SearchInfinity;
+        List<Move> bestLine = [];
         int alpha = -SearchInfinity;
 
         foreach (Move move in legalMoves)
         {
             UndoInfo undoInfo = ApplyTrackedMove(move);
-            int score;
+            SearchResult childResult;
             try
             {
-                score = -MiniMax(depthTarget - 1, -SearchInfinity, -alpha, 1);
+                childResult = MiniMax(depthTarget - 1, -SearchInfinity, -alpha, 1);
             }
             finally
             {
                 UndoTrackedMove(move, undoInfo);
             }
 
+            int score = -childResult.Evaluation;
             if (score > bestScore)
             {
                 bestScore = score;
                 bestMove = move;
+                bestLine = [move, .. childResult.BestLine];
             }
 
             alpha = Math.Max(alpha, score);
         }
 
         Logger.Debug($"Search depth {depthTarget} selected {StringRepr.MoveToUci(bestMove)} with score {bestScore}.");
-        return bestMove;
+        return new SearchResult(bestMove, bestScore, bestLine);
     }
 
-    private int MiniMax(int depth, int alpha, int beta, int ply)
+    private SearchResult MiniMax(int depth, int alpha, int beta, int ply)
     {
         if (drawManager.IsThreefoldRepetition() || DrawManager.IsDrawBy50MoveRule(currentBoard))
-            return 0;
+            return new SearchResult(Move.Null(), 0, []);
 
         List<Move> legalMoves = MoveGenerator.GenerateMoves(currentBoard);
         if (legalMoves.Count == 0)
-            return CheckRestriction.GetCheckingPieces(currentBoard) != 0 ? -MateScore + ply : 0;
+        {
+            int terminalScore = CheckRestriction.GetCheckingPieces(currentBoard) != 0 ? -MateScore + ply : 0;
+            return new SearchResult(Move.Null(), terminalScore, []);
+        }
 
         if (depth == 0)
-            return Evaluator.EvaluatePosition(currentBoard);
+            return new SearchResult(Move.Null(), Evaluator.EvaluatePosition(currentBoard), []);
 
         int bestScore = -SearchInfinity;
+        List<Move> bestLine = [];
         foreach (Move move in legalMoves)
         {
             UndoInfo undoInfo = ApplyTrackedMove(move);
-            int score;
+            SearchResult childResult;
             try
             {
-                score = -MiniMax(depth - 1, -beta, -alpha, ply + 1);
+                childResult = MiniMax(depth - 1, -beta, -alpha, ply + 1);
             }
             finally
             {
                 UndoTrackedMove(move, undoInfo);
             }
 
-            bestScore = Math.Max(bestScore, score);
+            int score = -childResult.Evaluation;
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestLine = [move, .. childResult.BestLine];
+            }
+
             alpha = Math.Max(alpha, score);
             if (alpha >= beta)
                 break;
         }
 
-        return bestScore;
+        return new SearchResult(Move.Null(), bestScore, bestLine);
     }
+
+    private readonly record struct SearchResult(Move BestMove, int Evaluation, List<Move> BestLine);
 
     private void EnsureDrawHistoryMatchesBoard()
     {
