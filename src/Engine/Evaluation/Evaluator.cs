@@ -71,7 +71,7 @@ public static class Evaluator
         int secondBishop = -1;
         while (firstBishop != -1 || (secondBishop = Operations.PopLSB(ref bishopBitboard)) != -1)
         {
-            if (firstBishop % 2 != secondBishop % 2) // Check if bishops are on opposite colors
+            if ((firstBishop / 8 + firstBishop % 8) % 2 != (secondBishop / 8 + secondBishop % 8) % 2) // Check if bishops are on opposite colors
             {
                 whiteBishopPair = true;
                 break;
@@ -85,7 +85,7 @@ public static class Evaluator
         secondBishop = -1;
         while (firstBishop != -1 || (secondBishop = Operations.PopLSB(ref bishopBitboard)) != -1)
         {
-            if (firstBishop % 2 != secondBishop % 2) // Check if bishops are on opposite colors
+            if ((firstBishop / 8 + firstBishop % 8) % 2 != (secondBishop / 8 + secondBishop % 8) % 2) // Check if bishops are on opposite colors
             {
                 blackBishopPair = true;
                 break;
