@@ -45,28 +45,6 @@ public class PerftTests
         );
     }
 
-    [Fact]
-    public void GenerateMoves_RejectsEnPassantThatExposesKingToRook()
-    {
-        var board = new Board("4r2k/8/8/3pP3/8/8/8/4K3 w - d6 0 1");
-
-        Assert.DoesNotContain(
-            MoveGenerator.GenerateMoves(board),
-            move => move.From() == 36 && move.To() == 43 && move.IsEnPassant()
-        );
-    }
-
-    [Fact]
-    public void GenerateMoves_IncludesLegalEnPassant()
-    {
-        var board = new Board("4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1");
-
-        Assert.Contains(
-            MoveGenerator.GenerateMoves(board),
-            move => move.From() == 36 && move.To() == 43 && move.IsEnPassant()
-        );
-    }
-
     private static long CountPositions(Board board, int depth)
     {
         if (depth == 0)

@@ -9,7 +9,7 @@ public class Bot
 {
     private const int MateScore = 1_000_000;
     private const int SearchInfinity = 1_100_000;
-    private const int SearchDepth = 5;
+    private const int SearchDepth = 4;
 
     public bool IsThinking { get; private set; }
     public Board currentBoard = new();
