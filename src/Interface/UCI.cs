@@ -19,7 +19,6 @@ public class UCI
 
     public void ReceiveCommand(string message)
     {
-        Logger.Info("Command received: " + message);
         message = message.Trim();
         string messageType = message.Split(' ')[0].ToLower();
 
@@ -85,13 +84,11 @@ public class UCI
         if (message.Contains("movetime"))
         {
             int moveTime = int.Parse(GetLabelledValue(message, "movetime", goLabels));
-            Logger.Info($"Received 'movetime' command with {moveTime} ms");
             player.Think(moveTime);
             return;
         }
         if (message.Contains("infinite"))
         {
-            Logger.Info("Requested infinite search");
             player.Think(int.MaxValue);
             return;
         }
@@ -139,7 +136,7 @@ public class UCI
             Respond($"{StringRepr.MoveToUci(move)}: {nodes}");
         }
 
-        Respond($"info string Nodes searched: {totalNodes}");
+        Respond($"Nodes searched: {totalNodes}");
     }
 
     private static long CountPositions(Board board, int depth)
@@ -198,7 +195,6 @@ public class UCI
     private static void Respond(string response)
     {
         Console.WriteLine(response);
-        Logger.Info("Response sent: " + response);
     }
 
     private static string GetLabelledValue(string message, string label, string[] allLabels)

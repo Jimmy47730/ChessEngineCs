@@ -11,6 +11,8 @@ public static class Logger
     private static string logPath = string.Empty;
     private static bool initialized = false;
     private static readonly object initLock = new();
+    // Levels of logging that will be printed to console. Can be adjusted as needed. Hardcoded for now
+    private static readonly string[] printLevels = ["INFO", "WARN", "ERROR"];
 
     static Logger()
     {
@@ -93,8 +95,25 @@ public static class Logger
         }
     }
 
-    public static void Info(string message) => Log("INFO", message);
-    public static void Debug(string message) => Log("DEBUG", message);
-    public static void Warn(string message) => Log("WARN", message);
-    public static void Error(string message) => Log("ERROR", message);
+    public static void Debug(string message)
+    {
+        if (printLevels.Contains("INFO"))
+            Log("DEBUG", message);
+    }
+    public static void Info(string message)
+    {
+        if (printLevels.Contains("INFO"))
+            Log("INFO", message);
+    }
+
+    public static void Warn(string message)
+    {
+        if (printLevels.Contains("INFO"))
+            Log("WARN", message);
+    }
+    public static void Error(string message)
+    {
+        if (printLevels.Contains("INFO"))
+            Log("ERROR", message);
+    }
 }
