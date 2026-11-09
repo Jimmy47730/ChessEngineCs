@@ -1,3 +1,4 @@
+using System.Numerics;
 using Core.DataStructures;
 using Core.Helpers;
 
@@ -10,34 +11,179 @@ public static class Evaluator
     private const int bishopValue = 325; // Might bump it up/down later
     private const int rookValue = 500;
     private const int queenValue = 920;
+    private const int maximumMaterialPhase = 24;
+
+    // Tables are indexed from a1 to h8, so the supplied a8-first rows are reversed.
+    private static readonly int[] pawnMiddleGameTable =
+    [
+        0, 0, 0, 0, 0, 0, 0, 0,
+        5, 10, 10, -20, -20, 10, 10, 5,
+        5, -5, -10, 0, 0, -10, -5, 5,
+        0, 0, 0, 20, 20, 0, 0, 0,
+        5, 5, 10, 25, 25, 10, 5, 5,
+        10, 10, 20, 30, 30, 20, 10, 10,
+        50, 50, 50, 50, 50, 50, 50, 50,
+        0, 0, 0, 0, 0, 0, 0, 0
+    ];
+    private static readonly int[] pawnEndGameTable =
+    [
+        0, 0, 0, 0, 0, 0, 0, 0,
+        -10, -10, -10, -10, -10, -10, -10, -10,
+        -5, -5, -5, -5, -5, -5, -5, -5,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        10, 10, 10, 10, 10, 10, 10, 10,
+        20, 20, 20, 20, 20, 20, 20, 20,
+        50, 50, 50, 50, 50, 50, 50, 50,
+        0, 0, 0, 0, 0, 0, 0, 0
+    ];
+    private static readonly int[] knightTable =
+    [
+        -50, -40, -30, -30, -30, -30, -40, -50,
+        -40, -20, 0, 5, 5, 0, -20, -40,
+        -30, 5, 10, 15, 15, 10, 5, -30,
+        -30, 0, 15, 20, 20, 15, 0, -30,
+        -30, 5, 15, 20, 20, 15, 5, -30,
+        -30, 0, 10, 15, 15, 10, 0, -30,
+        -40, -20, 0, 0, 0, 0, -20, -40,
+        -50, -40, -30, -30, -30, -30, -40, -50
+    ];
+    private static readonly int[] bishopTable =
+    [
+        -20, -10, -10, -10, -10, -10, -10, -20,
+        -10, 5, 0, 0, 0, 0, 5, -10,
+        -10, 10, 10, 10, 10, 10, 10, -10,
+        -10, 0, 10, 10, 10, 10, 0, -10,
+        -10, 5, 5, 10, 10, 5, 5, -10,
+        -10, 0, 5, 10, 10, 5, 0, -10,
+        -10, 0, 0, 0, 0, 0, 0, -10,
+        -20, -10, -10, -10, -10, -10, -10, -20
+    ];
+    private static readonly int[] rookTable =
+    [
+        0, 0, 0, 5, 5, 0, 0, 0,
+        -5, 0, 0, 0, 0, 0, 0, -5,
+        -5, 0, 0, 0, 0, 0, 0, -5,
+        -5, 0, 0, 0, 0, 0, 0, -5,
+        -5, 0, 0, 0, 0, 0, 0, -5,
+        -5, 0, 0, 0, 0, 0, 0, -5,
+        5, 10, 10, 10, 10, 10, 10, 5,
+        0, 0, 0, 0, 0, 0, 0, 0
+    ];
+    private static readonly int[] queenTable =
+    [
+        -20, -10, -10, -5, -5, -10, -10, -20,
+        -10, 0, 5, 0, 0, 0, 0, -10,
+        -10, 5, 5, 5, 5, 5, 0, -10,
+        0, 0, 5, 5, 5, 5, 0, -5,
+        -5, 0, 5, 5, 5, 5, 0, -5,
+        -10, 0, 5, 5, 5, 5, 0, -10,
+        -10, 0, 0, 0, 0, 0, 0, -10,
+        -20, -10, -10, -5, -5, -10, -10, -20
+    ];
+    private static readonly int[] kingMiddleGameTable =
+    [
+        20, 30, 10, 0, 0, 10, 30, 20,
+        20, 20, 0, 0, 0, 0, 20, 20,
+        -10, -20, -20, -20, -20, -20, -20, -10,
+        -20, -30, -30, -40, -40, -30, -30, -20,
+        -30, -40, -40, -50, -50, -40, -40, -30,
+        -30, -40, -40, -50, -50, -40, -40, -30,
+        -30, -40, -40, -50, -50, -40, -40, -30,
+        -30, -40, -40, -50, -50, -40, -40, -30
+    ];
+    private static readonly int[] kingEndGameTable =
+    [
+        -50, -30, -30, -30, -30, -30, -30, -50,
+        -30, -30, 0, 0, 0, 0, -30, -30,
+        -30, -10, 20, 30, 30, 20, -10, -30,
+        -30, -10, 30, 40, 40, 30, -10, -30,
+        -30, -10, 30, 40, 40, 30, -10, -30,
+        -30, -10, 20, 30, 30, 20, -10, -30,
+        -30, -20, -10, 0, 0, -10, -20, -30,
+        -50, -40, -30, -20, -20, -30, -40, -50
+    ];
 
     public static int EvaluatePosition(Board board)
     {
         int score = 0; 
 
-        score += CountMaterial(board);
+        score += EvaluateMaterialAndPieceSquareTables(board);
         score += EvaluateMaterialImbalance(board);
 
         return board.sideToMove == SideColor.White ? score : -score;
     }
 
-    private static int CountMaterial(Board board)
+    private static int EvaluateMaterialAndPieceSquareTables(Board board)
     {
-        int material = 0;
+        int materialPhase = GetMaterialPhase(board);
+        int score = 0;
 
-        material += Operations.PopCount(board.GetBitboard(PieceName.WhitePawn)) * pawnValue;
-        material += Operations.PopCount(board.GetBitboard(PieceName.WhiteKnight)) * knightValue;
-        material += Operations.PopCount(board.GetBitboard(PieceName.WhiteBishop)) * bishopValue;
-        material += Operations.PopCount(board.GetBitboard(PieceName.WhiteRook)) * rookValue;
-        material += Operations.PopCount(board.GetBitboard(PieceName.WhiteQueen)) * queenValue;
+        for (int sideIndex = 0; sideIndex < 2; sideIndex++)
+        {
+            SideColor side = (SideColor)sideIndex;
+            int sideSign = side == SideColor.White ? 1 : -1;
 
-        material -= Operations.PopCount(board.GetBitboard(PieceName.BlackPawn)) * pawnValue;
-        material -= Operations.PopCount(board.GetBitboard(PieceName.BlackKnight)) * knightValue;
-        material -= Operations.PopCount(board.GetBitboard(PieceName.BlackBishop)) * bishopValue;
-        material -= Operations.PopCount(board.GetBitboard(PieceName.BlackRook)) * rookValue;
-        material -= Operations.PopCount(board.GetBitboard(PieceName.BlackQueen)) * queenValue;
+            for (int pieceIndex = (int)PieceType.Pawn; pieceIndex <= (int)PieceType.King; pieceIndex++)
+            {
+                PieceType piece = (PieceType)pieceIndex;
+                ulong pieces = board.GetBitboard(piece, side);
+                int square;
 
-        return material;
+                while ((square = Operations.PopLSB(ref pieces)) != -1)
+                {
+                    int tableSquare = side == SideColor.White ? square : square ^ 56;
+                    score += sideSign * (GetPieceValue(piece) +
+                        GetPieceSquareValue(piece, tableSquare, materialPhase));
+                }
+            }
+        }
+
+        return score;
+    }
+
+    private static int GetMaterialPhase(Board board)
+    {
+        int phase = 0;
+        phase += BitOperations.PopCount(board.GetBitboard(PieceType.Knight, SideColor.White));
+        phase += BitOperations.PopCount(board.GetBitboard(PieceType.Knight, SideColor.Black));
+        phase += BitOperations.PopCount(board.GetBitboard(PieceType.Bishop, SideColor.White));
+        phase += BitOperations.PopCount(board.GetBitboard(PieceType.Bishop, SideColor.Black));
+        phase += 2 * BitOperations.PopCount(board.GetBitboard(PieceType.Rook, SideColor.White));
+        phase += 2 * BitOperations.PopCount(board.GetBitboard(PieceType.Rook, SideColor.Black));
+        phase += 4 * BitOperations.PopCount(board.GetBitboard(PieceType.Queen, SideColor.White));
+        phase += 4 * BitOperations.PopCount(board.GetBitboard(PieceType.Queen, SideColor.Black));
+
+        return Math.Min(phase, maximumMaterialPhase);
+    }
+
+    private static int GetPieceValue(PieceType piece) => piece switch
+    {
+        PieceType.Pawn => pawnValue,
+        PieceType.Knight => knightValue,
+        PieceType.Bishop => bishopValue,
+        PieceType.Rook => rookValue,
+        PieceType.Queen => queenValue,
+        _ => 0
+    };
+
+    private static int GetPieceSquareValue(PieceType piece, int square, int materialPhase)
+    {
+        return piece switch
+        {
+            PieceType.Pawn => Interpolate(pawnMiddleGameTable[square], pawnEndGameTable[square], materialPhase),
+            PieceType.Knight => knightTable[square],
+            PieceType.Bishop => bishopTable[square],
+            PieceType.Rook => rookTable[square],
+            PieceType.Queen => queenTable[square],
+            PieceType.King => Interpolate(kingMiddleGameTable[square], kingEndGameTable[square], materialPhase),
+            _ => 0
+        };
+    }
+
+    private static int Interpolate(int middleGameValue, int endGameValue, int materialPhase)
+    {
+        return (middleGameValue * materialPhase +
+            endGameValue * (maximumMaterialPhase - materialPhase)) / maximumMaterialPhase;
     }
 
     private static int EvaluateMaterialImbalance(Board board)
