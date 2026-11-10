@@ -1,6 +1,7 @@
 using Core.DataStructures;
 using Core.Helpers;
 using Engine;
+using Engine.Search;
 using Engine.MoveGeneration;
 using Xunit;
 
@@ -44,14 +45,17 @@ public class BotApplyMoveTests
     }
 
     [Fact]
-    public void Think_SelectsLegalMoveAndRestoresPosition()
+    public async Task StopThinking_CancelsSearchAndRestoresPosition()
     {
         var bot = new Bot();
         string originalPosition = bot.GetBoardDiagram();
         string? selectedMove = null;
         bot.OnMoveChosen = move => selectedMove = move;
 
-        bot.Think(0);
+        Task search = bot.ThinkAsync(int.MaxValue);
+        Assert.True(bot.IsThinking);
+        bot.StopThinking();
+        await search;
 
         Assert.NotNull(selectedMove);
         Assert.Contains(
@@ -59,5 +63,26 @@ public class BotApplyMoveTests
             move => StringRepr.MoveToUci(move) == selectedMove);
         Assert.Equal(originalPosition, bot.GetBoardDiagram());
         Assert.False(bot.IsThinking);
+    }
+
+    [Fact]
+    public void Search_CancelledBeforeFirstRootMoveReturnsEvaluatedLegalFallback()
+    {
+        var bot = new Bot();
+        string originalPosition = bot.GetBoardDiagram();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        Searcher.SearchResult result = bot.searcher.Search(cancellationToken: cancellation.Token);
+
+        Assert.True(result.Cancelled);
+        Assert.Contains(
+            MoveGenerator.GenerateMoves(bot.currentBoard),
+            move => move.From() == result.BestMove.From() &&
+                move.To() == result.BestMove.To() &&
+                move.Flags() == result.BestMove.Flags());
+        Assert.True(Math.Abs(result.Evaluation) < 1_100_000);
+        Assert.Equal(result.BestMove, Assert.Single(result.BestLine));
+        Assert.Equal(originalPosition, bot.GetBoardDiagram());
     }
 }

@@ -1,4 +1,3 @@
-using System.Reflection;
 using Chess;
 using Core.DataStructures;
 using Engine;
@@ -100,7 +99,11 @@ public class UciCommandTests : IClassFixture<UciLoggingFixture>
         var uci = new UCI();
         uci.ReceiveCommand("position startpos");
 
-        string output = CaptureOutput(() => uci.ReceiveCommand("go movetime 25"));
+        string output = CaptureOutput(() =>
+        {
+            uci.ReceiveCommand("go movetime 25");
+            uci.ReceiveCommand("stop");
+        });
 
         Assert.StartsWith("bestmove ", output);
     }
@@ -111,7 +114,11 @@ public class UciCommandTests : IClassFixture<UciLoggingFixture>
         var uci = new UCI();
         uci.ReceiveCommand("position startpos");
 
-        string output = CaptureOutput(() => uci.ReceiveCommand("go wtime 1000 btime 1000 winc 10 binc 20"));
+        string output = CaptureOutput(() =>
+        {
+            uci.ReceiveCommand("go wtime 1000 btime 1000 winc 10 binc 20");
+            uci.ReceiveCommand("stop");
+        });
 
         Assert.StartsWith("bestmove ", output);
     }
@@ -122,7 +129,11 @@ public class UciCommandTests : IClassFixture<UciLoggingFixture>
         var uci = new UCI();
         uci.ReceiveCommand("position startpos");
 
-        string output = CaptureOutput(() => uci.ReceiveCommand("go wtime 1000 btime 1000 movestogo 5"));
+        string output = CaptureOutput(() =>
+        {
+            uci.ReceiveCommand("go wtime 1000 btime 1000 movestogo 5");
+            uci.ReceiveCommand("stop");
+        });
 
         Assert.StartsWith("bestmove ", output);
     }
@@ -183,15 +194,17 @@ public class UciCommandTests : IClassFixture<UciLoggingFixture>
     }
 
     [Fact]
-    public void StopCommandCallsStopThinkingAndPropagatesItsErrorWhenThinking()
+    public void StopCommandStopsAnActiveSearchAndProducesBestMove()
     {
         var uci = new UCI();
-        var player = (Bot)typeof(UCI)
-            .GetField("player", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .GetValue(uci)!;
-        typeof(Bot).GetProperty(nameof(Bot.IsThinking))!.SetValue(player, true);
 
-        Assert.Throws<NotImplementedException>(() => uci.ReceiveCommand("stop"));
+        string output = CaptureOutput(() =>
+        {
+            uci.ReceiveCommand("go infinite");
+            uci.ReceiveCommand("stop");
+        });
+
+        Assert.StartsWith("bestmove ", output);
     }
 
     [Fact]

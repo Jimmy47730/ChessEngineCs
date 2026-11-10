@@ -3,21 +3,24 @@ using Core.Helpers;
 using Core.DataStructures;
 using Engine.Evaluation;
 using Engine.MoveGeneration;
+using Engine.Search;
+
 namespace Engine;
 
 public class Bot
 {
-    private const int MateScore = 1_000_000;
-    private const int SearchInfinity = 1_100_000;
-    private const int SearchDepth = 4;
-
     public bool IsThinking { get; private set; }
     public Board currentBoard = new();
     public Action<string>? OnMoveChosen;
-    private readonly DrawManager drawManager = new();
+    private readonly DrawManager drawManager;
+    public readonly Searcher searcher;
+    private readonly object thinkingLock = new();
+    private CancellationTokenSource? searchCancellation;
 
     public Bot()
     {
+        drawManager = new();
+        searcher = new(currentBoard, drawManager);
         drawManager.ResetPositions(currentBoard.zobristHash);
     }
 
@@ -86,7 +89,8 @@ public class Bot
 
     public void StopThinking()
     {
-        throw new NotImplementedException();
+        lock (thinkingLock)
+            searchCancellation?.Cancel();
     }
 
     // Time is always treated in milliseconds
@@ -96,29 +100,59 @@ public class Bot
         return whiteTime / 20 + whiteInc;
     }
 
-    public void Think(int time)
+    public Task ThinkAsync(int time)
+    {
+        BeginThinking();
+        return Task.Run(() =>
+        {
+            try
+            {
+                RunSearch();
+            }
+            finally
+            {
+                EndThinking();
+            }
+        });
+    }
+
+    private void RunSearch()
     {
         EnsureDrawHistoryMatchesBoard();
-        IsThinking = true;
-        try
+        var searcher = new Searcher(currentBoard, drawManager);
+        Searcher.SearchResult searchResult = searcher.Search();
+        if (!searchResult.BestMove.IsValid())
         {
-            SearchResult searchResult = Search(SearchDepth);
-            if (!searchResult.BestMove.IsValid())
-            {
-                Logger.Warn("No legal moves available.");
-                OnMoveChosen?.Invoke("0000");
-                return;
-            }
-
-            OnSearchComplete(searchResult);
+            Logger.Warn("No legal moves available.");
+            OnMoveChosen?.Invoke("0000");
+            return;
         }
-        finally
+
+        OnSearchComplete(searchResult);
+    }
+
+    private void BeginThinking()
+    {
+        lock (thinkingLock)
         {
+            if (IsThinking)
+                throw new InvalidOperationException("The bot is already thinking.");
+
+            searchCancellation = new CancellationTokenSource();
+            IsThinking = true;
+        }
+    }
+
+    private void EndThinking()
+    {
+        lock (thinkingLock)
+        {
+            searchCancellation = null;
             IsThinking = false;
         }
     }
 
-    private void OnSearchComplete(SearchResult searchResult)
+    private void OnSearchComplete(Searcher.SearchResult searchResult)
     {
         string bestMoveUci = StringRepr.MoveToUci(searchResult.BestMove);
         string bestLine = string.Join(" ", searchResult.BestLine.Select(StringRepr.MoveToUci));
@@ -127,96 +161,6 @@ public class Bot
         Logger.Info($"Current evaluation: {searchResult.Evaluation}");
         OnMoveChosen?.Invoke(bestMoveUci);
     }
-
-    private SearchResult Search(int depthTarget)
-    {
-        if (depthTarget < 1)
-            throw new ArgumentOutOfRangeException(nameof(depthTarget), "Search depth must be at least one.");
-
-        List<Move> legalMoves = MoveGenerator.GenerateMoves(currentBoard);
-        Logger.Debug($"Generated {legalMoves.Count} legal moves.");
-        if (legalMoves.Count == 0)
-            return new SearchResult(Move.Null(), 0, []);
-
-        Move bestMove = legalMoves[0];
-        int bestScore = -SearchInfinity;
-        List<Move> bestLine = [];
-        int alpha = -SearchInfinity;
-
-        foreach (Move move in legalMoves)
-        {
-            UndoInfo undoInfo = ApplyTrackedMove(move);
-            SearchResult childResult;
-            try
-            {
-                childResult = MiniMax(depthTarget - 1, -SearchInfinity, -alpha, 1);
-            }
-            finally
-            {
-                UndoTrackedMove(move, undoInfo);
-            }
-
-            int score = -childResult.Evaluation;
-            if (score > bestScore)
-            {
-                bestScore = score;
-                bestMove = move;
-                bestLine = [move, .. childResult.BestLine];
-            }
-
-            alpha = Math.Max(alpha, score);
-        }
-
-        Logger.Debug($"Search depth {depthTarget} selected {StringRepr.MoveToUci(bestMove)} with score {bestScore}.");
-        return new SearchResult(bestMove, bestScore, bestLine);
-    }
-
-    private SearchResult MiniMax(int depth, int alpha, int beta, int ply)
-    {
-        if (drawManager.IsThreefoldRepetition() || DrawManager.IsDrawBy50MoveRule(currentBoard))
-            return new SearchResult(Move.Null(), 0, []);
-
-        List<Move> legalMoves = MoveGenerator.GenerateMoves(currentBoard);
-        if (legalMoves.Count == 0)
-        {
-            int terminalScore = CheckRestriction.GetCheckingPieces(currentBoard) != 0 ? -MateScore + ply : 0;
-            return new SearchResult(Move.Null(), terminalScore, []);
-        }
-
-        if (depth == 0)
-            return new SearchResult(Move.Null(), Evaluator.EvaluatePosition(currentBoard), []);
-
-        int bestScore = -SearchInfinity;
-        List<Move> bestLine = [];
-        foreach (Move move in legalMoves)
-        {
-            UndoInfo undoInfo = ApplyTrackedMove(move);
-            SearchResult childResult;
-            try
-            {
-                childResult = MiniMax(depth - 1, -beta, -alpha, ply + 1);
-            }
-            finally
-            {
-                UndoTrackedMove(move, undoInfo);
-            }
-
-            int score = -childResult.Evaluation;
-            if (score > bestScore)
-            {
-                bestScore = score;
-                bestLine = [move, .. childResult.BestLine];
-            }
-
-            alpha = Math.Max(alpha, score);
-            if (alpha >= beta)
-                break;
-        }
-
-        return new SearchResult(Move.Null(), bestScore, bestLine);
-    }
-
-    private readonly record struct SearchResult(Move BestMove, int Evaluation, List<Move> BestLine);
 
     private void EnsureDrawHistoryMatchesBoard()
     {
@@ -229,8 +173,8 @@ public class Bot
         char movedPiece = currentBoard.GetPieceAt(move.From());
         bool[] previousCastlingRights = currentBoard.GetCastlingRights();
         UndoInfo undoInfo = currentBoard.ApplyMove(move);
-        bool lostCastlingRights = false;
         bool[] currentCastlingRights = currentBoard.GetCastlingRights();
+        bool lostCastlingRights = false;
         for (int i = 0; i < previousCastlingRights.Length; i++)
         {
             if (previousCastlingRights[i] && !currentCastlingRights[i])
@@ -245,11 +189,5 @@ public class Bot
             lostCastlingRights;
         drawManager.PushPosition(currentBoard.zobristHash, isIrreversible);
         return undoInfo;
-    }
-
-    private void UndoTrackedMove(Move move, UndoInfo undoInfo)
-    {
-        drawManager.PopPosition();
-        currentBoard.UndoMove(move, undoInfo);
     }
 }

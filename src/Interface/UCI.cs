@@ -2,11 +2,14 @@ using Engine;
 using Core.Helpers;
 using Core.DataStructures;
 using Engine.MoveGeneration;
+using System.Threading.Tasks;
+
 namespace Chess;
 
 public class UCI
 {
     private readonly Bot player;
+    private Task? searchTask;
 
 	static readonly string[] positionLabels = ["fen", "moves"];
 	static readonly string[] goLabels = ["perft", "movetime", "wtime", "btime", "winc", "binc", "movestogo"];
@@ -31,24 +34,24 @@ public class UCI
                 Respond("readyok");
                 break;
             case "ucinewgame":
+                StopAndWaitForSearch();
                 player.NotifyNewGame();
                 break;
             case "position":
+                StopAndWaitForSearch();
                 ProcessPositionCommand(message);
                 break;
             case "go":
                 ProcessGoCommand(message);
                 break;
             case "stop":
-                if (player.IsThinking)
-                {
-                    player.StopThinking();
-                }
+                StopAndWaitForSearch();
                 break;
             case "quit":
                 player.Quit();
                 break;
             case "d":
+                StopAndWaitForSearch();
                 Console.WriteLine(player.GetBoardDiagram());
                 break;
             default:
@@ -69,6 +72,7 @@ public class UCI
 
         if (commandParts.Length > 1 && string.Equals(commandParts[1], "perft", StringComparison.OrdinalIgnoreCase))
         {
+            StopAndWaitForSearch();
             if (commandParts.Length != 3)
                 throw new FormatException("The 'go perft' command requires exactly one depth argument.");
 
@@ -84,12 +88,12 @@ public class UCI
         if (message.Contains("movetime"))
         {
             int moveTime = int.Parse(GetLabelledValue(message, "movetime", goLabels));
-            player.Think(moveTime);
+            StartSearch(moveTime);
             return;
         }
         if (message.Contains("infinite"))
         {
-            player.Think(int.MaxValue);
+            StartSearch(int.MaxValue);
             return;
         }
 
@@ -113,7 +117,36 @@ public class UCI
 
         int time = Bot.DefineThinkingTime(whiteTime, blackTime, whiteInc, blackInc);
         Logger.Info($"Allocated thinking time: {time} ms");
-        player.Think(time);
+        StartSearch(time);
+    }
+
+    private void StartSearch(int time)
+    {
+        StopAndWaitForSearch();
+        searchTask = RunSearchAsync(time);
+    }
+
+    private async Task RunSearchAsync(int time)
+    {
+        try
+        {
+            await player.ThinkAsync(time);
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Search failed: {ex}");
+        }
+    }
+
+    private void StopAndWaitForSearch()
+    {
+        Task? currentSearch = searchTask;
+        if (currentSearch is null)
+            return;
+
+        player.StopThinking();
+        currentSearch.GetAwaiter().GetResult();
+        searchTask = null;
     }
 
     private void RunPerftDivide(int depth)
