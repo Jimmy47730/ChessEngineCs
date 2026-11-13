@@ -6,7 +6,6 @@ namespace Engine.Search;
 
 public static class MoveOrdering
 {
-    private const int checkBonus = 1_000_000;
     private const int promotionBonus = 200_000;
     private const int captureBonus = 100_000;
 
@@ -57,20 +56,6 @@ public static class MoveOrdering
                 GetPieceValue(move.PromotionPieceType()) -
                 GetPieceValue(PieceType.Pawn);
         }
-
-        UndoInfo undoInfo = board.ApplyMove(move);
-        bool givesCheck;
-        try
-        {
-            givesCheck = CheckRestriction.GetCheckingPieces(board) != 0;
-        }
-        finally
-        {
-            board.UndoMove(move, undoInfo);
-        }
-
-        if (givesCheck)
-            score += checkBonus;
 
         return score;
     }

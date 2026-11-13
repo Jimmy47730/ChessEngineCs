@@ -8,20 +8,6 @@ namespace ChessEngine.Tests.Engine;
 
 public class MoveOrderingTests
 {
-    [Fact]
-    public void OrderMoves_PrioritizesCheckingMovesAndRestoresBoard()
-    {
-        var board = new Board("k7/8/8/8/8/8/4R3/7K w - - 0 1");
-        List<Move> moves = MoveGenerator.GenerateMoves(board);
-        ulong originalHash = board.zobristHash;
-        string originalFen = StringRepr.ToFen(board);
-
-        MoveOrdering.OrderMoves(board, moves);
-
-        Assert.Equal("e2a2", StringRepr.MoveToUci(moves[0]));
-        Assert.Equal(originalHash, board.zobristHash);
-        Assert.Equal(originalFen, StringRepr.ToFen(board));
-    }
 
     [Fact]
     public void OrderMoves_PrioritizesQueenPromotion()

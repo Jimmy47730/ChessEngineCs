@@ -290,9 +290,9 @@ public static class Evaluator
 
         // Give a bonus for the opponent king having less legal moves
         SideColor originalSideColor = board.ChangeSideToMove(SideColor.Black);
-        score += (8 - MoveGenerator.GenerateKingMoves(board, false).Count) * 10;
+        score += (8 - MoveGenerator.GenerateKingMoves(board, false).Count) * 8;
         board.ChangeSideToMove(SideColor.White);
-        score -= (8 - MoveGenerator.GenerateKingMoves(board, false).Count) * 10;
+        score -= (8 - MoveGenerator.GenerateKingMoves(board, false).Count) * 8;
         board.ChangeSideToMove(originalSideColor);
 
         return score;

@@ -97,7 +97,7 @@ public static class Logger
 
     public static void Debug(string message)
     {
-        if (printLevels.Contains("INFO"))
+        if (printLevels.Contains("DEBUG"))
             Log("DEBUG", message);
     }
     public static void Info(string message)
@@ -108,12 +108,12 @@ public static class Logger
 
     public static void Warn(string message)
     {
-        if (printLevels.Contains("INFO"))
+        if (printLevels.Contains("WARN"))
             Log("WARN", message);
     }
     public static void Error(string message)
     {
-        if (printLevels.Contains("INFO"))
+        if (printLevels.Contains("ERROR"))
             Log("ERROR", message);
     }
 }

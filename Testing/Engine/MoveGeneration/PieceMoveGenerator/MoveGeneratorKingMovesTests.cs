@@ -15,7 +15,7 @@ public class MoveGeneratorKingMovesTests
     [InlineData("4k3/8/8/8/3K4/8/8/8 w - - 0 1", "d4", "c3", "d3", "e3", "c4", "e4", "c5", "d5", "e5")]
     public void GenerateKingMoves_GeneratesOnlyOnBoardAdjacentSquares(string fen, string from, params string[] destinations)
     {
-        var moves = GenerateKingMoves(new Board(fen));
+        var moves = MoveGenerator.GenerateKingMoves(new Board(fen), false);
 
         Assert.Equal(
             destinations.Select(to => Move(from, to)).OrderBy(move => move.To),
@@ -27,7 +27,7 @@ public class MoveGeneratorKingMovesTests
     {
         var board = new Board("7k/8/8/8/4P3/4K3/8/8 w - - 0 1");
 
-        var moves = GenerateKingMoves(board);
+        var moves = MoveGenerator.GenerateKingMoves(board, false);
 
         Assert.DoesNotContain(moves, move => move.To() == Square("e4"));
         Assert.Equal(7, moves.Count);
@@ -38,7 +38,7 @@ public class MoveGeneratorKingMovesTests
     {
         var board = new Board("3r1r1k/8/8/8/8/8/8/4K3 w - - 0 1");
 
-        var moves = GenerateKingMoves(board);
+        var moves = MoveGenerator.GenerateKingMoves(board, false);
 
         Assert.DoesNotContain(moves, move => move.To() == Square("d1"));
         Assert.DoesNotContain(moves, move => move.To() == Square("f1"));
@@ -66,7 +66,7 @@ public class MoveGeneratorKingMovesTests
     {
         var board = new Board("6rk/8/8/8/8/8/8/K7 b - - 0 1");
 
-        Assert.DoesNotContain(GenerateKingMoves(board), move => move.To() == Square("g8"));
+        Assert.DoesNotContain(MoveGenerator.GenerateKingMoves(board, false), move => move.To() == Square("g8"));
     }
 
     [Fact]
@@ -74,7 +74,7 @@ public class MoveGeneratorKingMovesTests
     {
         var board = new Board("3r3k/8/8/8/3n4/3K4/8/8 w - - 0 1");
 
-        Assert.DoesNotContain(GenerateKingMoves(board), move => move.To() == Square("d4"));
+        Assert.DoesNotContain(MoveGenerator.GenerateKingMoves(board, false), move => move.To() == Square("d4"));
     }
 
     [Fact]
@@ -82,7 +82,7 @@ public class MoveGeneratorKingMovesTests
     {
         var board = new Board("7k/8/8/8/3n4/4K3/8/8 w - - 0 1");
 
-        var moves = GenerateKingMoves(board);
+        var moves = MoveGenerator.GenerateKingMoves(board, false);
 
         Assert.Contains(moves, move => move.To() == Square("d4") && move.Flags() == 4);
         Assert.Contains(moves, move => move.To() == Square("d3") && move.Flags() == 0);
@@ -93,7 +93,7 @@ public class MoveGeneratorKingMovesTests
     {
         var board = new Board("7k/8/8/8/8/8/8/8 w - - 0 1");
 
-        Assert.Empty(GenerateKingMoves(board));
+        Assert.Empty(MoveGenerator.GenerateKingMoves(board, false));
     }
 
     [Fact]
@@ -101,7 +101,7 @@ public class MoveGeneratorKingMovesTests
     {
         var board = new Board("7k/8/8/8/8/8/PP6/KP6 w - - 0 1");
 
-        Assert.Empty(GenerateKingMoves(board));
+        Assert.Empty(MoveGenerator.GenerateKingMoves(board, false));
     }
 
     [Fact]
@@ -109,7 +109,7 @@ public class MoveGeneratorKingMovesTests
     {
         var board = new Board("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1");
 
-        var moves = GenerateKingMoves(board, isInCheck: true);
+        var moves = MoveGenerator.GenerateKingMoves(board, isInCheck: true);
 
         Assert.DoesNotContain(moves, move => move.IsCastling());
     }
@@ -125,7 +125,7 @@ public class MoveGeneratorKingMovesTests
         string queenSideDestination)
     {
         var board = new Board($"r3k2r/8/8/8/8/8/8/R3K2R {sideToMove} KQkq - 0 1");
-        var moves = GenerateKingMoves(board);
+        var moves = MoveGenerator.GenerateKingMoves(board, false);
 
         Assert.Contains(moves, move =>
             move.From() == Square(kingStart) &&
@@ -147,7 +147,7 @@ public class MoveGeneratorKingMovesTests
     {
         var board = new Board($"r3k2r/8/8/8/8/8/8/R3K2R w {rights} - 0 1");
 
-        var moves = GenerateKingMoves(board);
+        var moves = MoveGenerator.GenerateKingMoves(board, false);
 
         Assert.Equal(expectKingSide, moves.Any(move => move.IsKingSideCastle()));
         Assert.Equal(expectQueenSide, moves.Any(move => move.IsQueenSideCastle()));
@@ -158,7 +158,7 @@ public class MoveGeneratorKingMovesTests
     {
         var board = new Board("r3k2r/8/8/8/8/8/8/R3K2R w - - 0 1");
 
-        Assert.DoesNotContain(GenerateKingMoves(board), move => move.IsCastling());
+        Assert.DoesNotContain(MoveGenerator.GenerateKingMoves(board, false), move => move.IsCastling());
     }
 
     [Fact]
@@ -166,7 +166,7 @@ public class MoveGeneratorKingMovesTests
     {
         var board = new Board("4k3/8/8/8/8/8/8/4K3 w KQ - 0 1");
 
-        Assert.DoesNotContain(GenerateKingMoves(board), move => move.IsCastling());
+        Assert.DoesNotContain(MoveGenerator.GenerateKingMoves(board, false), move => move.IsCastling());
     }
 
     [Fact]
@@ -174,7 +174,7 @@ public class MoveGeneratorKingMovesTests
     {
         var board = new Board("4k3/8/8/8/8/8/8/4KN1R w K - 0 1");
 
-        Assert.DoesNotContain(GenerateKingMoves(board), move => move.IsCastling());
+        Assert.DoesNotContain(MoveGenerator.GenerateKingMoves(board, false), move => move.IsCastling());
     }
 
     [Fact]
@@ -182,7 +182,7 @@ public class MoveGeneratorKingMovesTests
     {
         var board = new Board("5r1k/8/8/8/8/8/8/4K2R w K - 0 1");
 
-        Assert.DoesNotContain(GenerateKingMoves(board), move => move.IsCastling());
+        Assert.DoesNotContain(MoveGenerator.GenerateKingMoves(board, false), move => move.IsCastling());
     }
 
     [Fact]
@@ -190,7 +190,7 @@ public class MoveGeneratorKingMovesTests
     {
         var board = new Board("k7/8/8/8/8/8/8/r3K2R w KQ - 0 1");
 
-        Assert.DoesNotContain(GenerateKingMoves(board), move => move.IsQueenSideCastle());
+        Assert.DoesNotContain(MoveGenerator.GenerateKingMoves(board, false), move => move.IsQueenSideCastle());
     }
 
     [Fact]
@@ -198,7 +198,7 @@ public class MoveGeneratorKingMovesTests
     {
         var board = new Board("4k3/8/8/8/8/8/8/RN2K3 w Q - 0 1");
 
-        Assert.DoesNotContain(GenerateKingMoves(board), move => move.IsQueenSideCastle());
+        Assert.DoesNotContain(MoveGenerator.GenerateKingMoves(board, false), move => move.IsQueenSideCastle());
     }
 
     [Fact]
@@ -206,17 +206,7 @@ public class MoveGeneratorKingMovesTests
     {
         var board = new Board("7k/8/8/8/8/8/8/3K3R w K - 0 1");
 
-        Assert.DoesNotContain(GenerateKingMoves(board), move => move.IsCastling());
-    }
-
-    private static List<Move> GenerateKingMoves(Board board, bool isInCheck = false)
-    {
-        MethodInfo method = typeof(MoveGenerator).GetMethod(
-            "GenerateKingMoves",
-            BindingFlags.NonPublic | BindingFlags.Static)
-            ?? throw new InvalidOperationException("GenerateKingMoves method was not found.");
-
-        return (List<Move>)method.Invoke(null, [board, isInCheck])!;
+        Assert.DoesNotContain(MoveGenerator.GenerateKingMoves(board, false), move => move.IsCastling());
     }
 
     private static MoveResult ToResult(Move move) => new(move.From(), move.To(), move.Flags());
