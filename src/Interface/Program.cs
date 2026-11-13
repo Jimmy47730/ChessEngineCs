@@ -17,11 +17,13 @@ public class Program
         UCI uci = new();
         Logger.Info("Starting Chess Engine...");
 
-        string command = string.Empty;
-        while (command != "quit")
+        while (true)
         {
             var input = Console.ReadLine();
-            command = input ?? string.Empty;
+            string command = input ?? string.Empty;
+            if (string.Equals(command.Trim(), "quit", StringComparison.OrdinalIgnoreCase))
+                break;
+
             if (!string.IsNullOrWhiteSpace(command))
             {
                 try

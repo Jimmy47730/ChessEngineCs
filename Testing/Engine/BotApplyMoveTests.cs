@@ -66,6 +66,19 @@ public class BotApplyMoveTests
     }
 
     [Fact]
+    public async Task ThinkAsync_StopsSearchWhenTimeLimitExpires()
+    {
+        var bot = new Bot();
+        string? selectedMove = null;
+        bot.OnMoveChosen = move => selectedMove = move;
+
+        await bot.ThinkAsync(0);
+
+        Assert.NotNull(selectedMove);
+        Assert.False(bot.IsThinking);
+    }
+
+    [Fact]
     public void Search_CancelledBeforeFirstRootMoveReturnsEvaluatedLegalFallback()
     {
         var bot = new Bot();

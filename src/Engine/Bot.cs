@@ -4,6 +4,7 @@ using Core.DataStructures;
 using Engine.Evaluation;
 using Engine.MoveGeneration;
 using Engine.Search;
+using System.ComponentModel.DataAnnotations;
 
 namespace Engine;
 
@@ -16,6 +17,7 @@ public class Bot
     public readonly Searcher searcher;
     private readonly object thinkingLock = new();
     private CancellationTokenSource? searchCancellation;
+    private const int thinkTimeOverride = 3000; // leave 0 to disable
 
     public Bot()
     {
@@ -48,7 +50,7 @@ public class Bot
 
     public void Quit()
     {
-        throw new NotImplementedException();
+        StopThinking();
     }
 
     public void ApplyMove(Move move)
@@ -102,12 +104,12 @@ public class Bot
 
     public Task ThinkAsync(int time)
     {
-        BeginThinking();
+        CancellationToken cancellationToken = BeginThinking(time);
         return Task.Run(() =>
         {
             try
             {
-                RunSearch();
+                RunSearch(cancellationToken);
             }
             finally
             {
@@ -116,11 +118,11 @@ public class Bot
         });
     }
 
-    private void RunSearch()
+    private void RunSearch(CancellationToken cancellationToken)
     {
         EnsureDrawHistoryMatchesBoard();
         var searcher = new Searcher(currentBoard, drawManager);
-        Searcher.SearchResult searchResult = searcher.Search();
+        Searcher.SearchResult searchResult = searcher.Search(cancellationToken: cancellationToken);
         if (!searchResult.BestMove.IsValid())
         {
             Logger.Warn("No legal moves available.");
@@ -131,15 +133,21 @@ public class Bot
         OnSearchComplete(searchResult);
     }
 
-    private void BeginThinking()
+    private CancellationToken BeginThinking(int time)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(time);
+
         lock (thinkingLock)
         {
             if (IsThinking)
                 throw new InvalidOperationException("The bot is already thinking.");
 
             searchCancellation = new CancellationTokenSource();
+            if (thinkTimeOverride > 0)
+                time = Math.Min(time, thinkTimeOverride);
+            searchCancellation.CancelAfter(time);
             IsThinking = true;
+            return searchCancellation.Token;
         }
     }
 

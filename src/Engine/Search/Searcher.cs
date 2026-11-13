@@ -10,7 +10,7 @@ public class Searcher(Board board, DrawManager drawManager)
 {
     private const int MateScore = 1_000_000;
     private const int SearchInfinity = 1_100_000;
-    private const int DefaultSearchDepth = 6;
+    private const int DefaultSearchDepth = 8;
     private readonly Board board = board;
     private readonly DrawManager drawManager = drawManager;
 

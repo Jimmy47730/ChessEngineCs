@@ -48,6 +48,7 @@ public class UCI
                 StopAndWaitForSearch();
                 break;
             case "quit":
+                StopAndWaitForSearch();
                 player.Quit();
                 break;
             case "d":

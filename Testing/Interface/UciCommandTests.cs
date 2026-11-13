@@ -208,9 +208,9 @@ public class UciCommandTests : IClassFixture<UciLoggingFixture>
     }
 
     [Fact]
-    public void QuitCommandCallsQuitAndPropagatesItsError()
+    public void QuitCommandStopsWithoutThrowing()
     {
-        Assert.Throws<NotImplementedException>(() => new UCI().ReceiveCommand("quit"));
+        new UCI().ReceiveCommand("quit");
     }
 
     [Fact]
