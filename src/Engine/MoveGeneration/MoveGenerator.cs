@@ -39,7 +39,7 @@ public class MoveGenerator
     }
 
     // Individual piece methods
-    private static List<Move> GenerateKingMoves(Board board, bool isInCheck)
+    public static List<Move> GenerateKingMoves(Board board, bool isInCheck)
     {
         List<Move> moves = [];
         int kingSquare = Operations.LsbIndex(board.GetBitboard(PieceType.King, board.sideToMove));

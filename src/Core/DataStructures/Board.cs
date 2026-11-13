@@ -51,6 +51,12 @@ public class Board
 
         return fullBitboard;
     }
+
+    public SideColor ChangeSideToMove(SideColor newSide)
+    {
+        sideToMove = newSide;
+        return 1 - sideToMove;
+    }
     // Constructors
 
     public Board() : this("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")

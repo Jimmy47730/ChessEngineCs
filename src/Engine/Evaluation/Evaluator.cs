@@ -1,6 +1,7 @@
 using System.Numerics;
 using Core.DataStructures;
 using Core.Helpers;
+using Engine.MoveGeneration;
 
 namespace Engine.Evaluation;
 
@@ -268,5 +269,32 @@ public static class Evaluator
         imbalance -= blackRookCount * (blackPawnCount < 5 ? 15 : 0);
 
         return imbalance;
+    }
+
+    // Force the opponent king to the edge of the board in the endgame, usually leading to some sort of mate.
+    private static int ForceOpponentKingToEdge(Board board)
+    {
+        int score = 0;
+
+        if (GetMaterialPhase(board) > 4)
+            return score;
+
+        int whiteKingSquare = Operations.LsbIndex(board.GetBitboard(PieceName.WhiteKing));
+        int blackKingSquare = Operations.LsbIndex(board.GetBitboard(PieceName.BlackKing));
+
+        // If the opponent king is on the edge of the board, give a bonus
+        score += (int)((3.5 - Math.Abs(blackKingSquare / 8)) * 20);
+        score += (int)((3.5 - Math.Abs(blackKingSquare % 8)) * 20);
+        score -= (int)((3.5 - Math.Abs(whiteKingSquare / 8)) * 20);
+        score -= (int)((3.5 - Math.Abs(whiteKingSquare % 8)) * 20);
+
+        // Give a bonus for the opponent king having less legal moves
+        SideColor originalSideColor = board.ChangeSideToMove(SideColor.Black);
+        score += (8 - MoveGenerator.GenerateKingMoves(board, false).Count) * 10;
+        board.ChangeSideToMove(SideColor.White);
+        score -= (8 - MoveGenerator.GenerateKingMoves(board, false).Count) * 10;
+        board.ChangeSideToMove(originalSideColor);
+
+        return score;
     }
 }

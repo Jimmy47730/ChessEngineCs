@@ -10,7 +10,7 @@ public class Searcher(Board board, DrawManager drawManager)
 {
     private const int MateScore = 1_000_000;
     private const int SearchInfinity = 1_100_000;
-    private const int DefaultSearchDepth = 8;
+    private const int DefaultSearchDepth = 4;
     private readonly Board board = board;
     private readonly DrawManager drawManager = drawManager;
 
@@ -26,6 +26,7 @@ public class Searcher(Board board, DrawManager drawManager)
         if (legalMoves.Count == 0)
             return new SearchResult(Move.Null(), 0, []);
 
+        MoveOrdering.OrderMoves(board, legalMoves);
         Move bestMove = legalMoves[0];
         int bestScore = -SearchInfinity;
         List<Move> bestLine = [];
@@ -83,6 +84,7 @@ public class Searcher(Board board, DrawManager drawManager)
         if (depth == 0)
             return new SearchResult(Move.Null(), Evaluator.EvaluatePosition(board), []);
 
+        MoveOrdering.OrderMoves(board, legalMoves);
         int bestScore = -SearchInfinity;
         List<Move> bestLine = [];
         foreach (Move move in legalMoves)

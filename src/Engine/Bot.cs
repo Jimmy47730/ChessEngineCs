@@ -17,7 +17,7 @@ public class Bot
     public readonly Searcher searcher;
     private readonly object thinkingLock = new();
     private CancellationTokenSource? searchCancellation;
-    private const int thinkTimeOverride = 3000; // leave 0 to disable
+    private const int thinkTimeOverride = 0; // leave 0 to disable
 
     public Bot()
     {
